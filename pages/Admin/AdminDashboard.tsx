@@ -47,26 +47,48 @@ const AdminDashboard: React.FC = () => {
   };
 
   const uploadToImageKit = async (file: File): Promise<string> => {
-    if (!IK_PUBLIC_KEY || !IK_URL_ENDPOINT) {
-      alert(`Error: Kredensial ImageKit tidak ditemukan.\nHarap pastikan VITE_IMAGEKIT_PUBLIC_KEY & VITE_IMAGEKIT_URL_ENDPOINT sudah terpasang.`);
-      throw new Error('Missing IK Credentials');
+    if (!IK_PUBLIC_KEY) {
+      alert(`Error: VITE_IMAGEKIT_PUBLIC_KEY tidak terbaca.`);
+      throw new Error('Missing Public Key');
     }
+    
     setIsUploading(true);
     try {
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('fileName', file.name);
+      formData.append('fileName', file.name || `upload_${Date.now()}`);
       formData.append('publicKey', IK_PUBLIC_KEY);
       formData.append('useUniqueFileName', 'true');
+
+      // Mengirim request ke ImageKit
       const response = await fetch('https://upload.imagekit.io/api/v1/files/upload', {
         method: 'POST',
         body: formData,
       });
+
       const result = await response.json();
-      if (!response.ok) throw new Error(result.message || 'Unggahan gagal');
+
+      if (!response.ok) {
+        // Jika gagal, berikan info spesifik dari ImageKit
+        const errorMsg = result.message || 'Error tidak dikenal';
+        console.error('ImageKit Upload Error:', result);
+        
+        if (errorMsg.includes('unsigned upload')) {
+          alert('GAGAL: Anda belum mengaktifkan "Unsigned Upload" di Dashboard ImageKit.\n\nCara Aktifkan:\n1. Buka Dashboard ImageKit\n2. Klik Icon Gerigi (Settings)\n3. Pilih "Security" -> "Upload Policy"\n4. Centang "Allow Unsigned Upload"\n5. Klik Save.');
+        } else if (errorMsg.includes('origin')) {
+          alert(`GAGAL: Domain ini belum diizinkan.\n\nCara Fix:\n1. Buka Dashboard ImageKit -> Settings -> Security\n2. Masukkan domain website Anda di bagian "Allowed Origins"\n3. Klik Save.`);
+        } else {
+          alert(`Error ImageKit: ${errorMsg}`);
+        }
+        throw new Error(errorMsg);
+      }
+
       return result.url;
-    } catch (error) {
-      alert('Gagal mengunggah gambar ke ImageKit. Periksa koneksi atau kredensial.');
+    } catch (error: any) {
+      console.error('Fetch Error:', error);
+      if (!error.message.includes('unsigned upload')) {
+        alert('Gagal mengunggah. Pastikan koneksi internet stabil dan pengaturan ImageKit sudah benar.');
+      }
       throw error;
     } finally {
       setIsUploading(false);
@@ -251,8 +273,8 @@ const AdminDashboard: React.FC = () => {
           <div className="max-w-md mx-auto bg-white dark:bg-[#1a2e1a] p-10 rounded-[40px] border border-gray-100 dark:border-gray-800">
              <h3 className="text-2xl font-black mb-6 text-center">Update Password</h3>
              <form onSubmit={e => { e.preventDefault(); dbService.saveAdminCredentials(adminCreds).then(() => alert('Tersimpan!')); }} className="flex flex-col gap-6">
-                <input required className="h-14 border-2 rounded-2xl px-6 dark:bg-black/20 outline-none focus:border-primary font-bold" value={adminCreds.username} onChange={e => setAdminCreds({...adminCreds, username: e.target.value})} placeholder="Username" />
-                <input required type="password" className="h-14 border-2 rounded-2xl px-6 dark:bg-black/20 outline-none focus:border-primary font-bold" value={adminCreds.password} onChange={e => setAdminCreds({...adminCreds, password: e.target.value})} placeholder="Password Baru" />
+                <input required className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 focus:border-primary outline-none font-bold" value={adminCreds.username} onChange={e => setAdminCreds({...adminCreds, username: e.target.value})} placeholder="Username" />
+                <input required type="password" className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 focus:border-primary outline-none font-bold" value={adminCreds.password} onChange={e => setAdminCreds({...adminCreds, password: e.target.value})} placeholder="Password Baru" />
                 <button className="h-16 bg-primary text-[#111811] rounded-2xl font-black text-lg shadow-xl shadow-primary/20">Simpan Kredensial</button>
              </form>
           </div>
@@ -262,41 +284,41 @@ const AdminDashboard: React.FC = () => {
                 <div className="space-y-6">
                   <h3 className="text-xl font-black border-b pb-2">General & Hero Settings</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Nama Website</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.siteName} onChange={e => localSettings && setLocalSettings({...localSettings, siteName: e.target.value})} /></div>
-                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Logo URL</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.logoUrl} onChange={e => localSettings && setLocalSettings({...localSettings, logoUrl: e.target.value})} /></div>
-                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Hero Image URL</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.heroImage} onChange={e => localSettings && setLocalSettings({...localSettings, heroImage: e.target.value})} /></div>
-                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Hero Title</label><textarea className="h-24 border-2 rounded-xl p-4 dark:bg-black/20 outline-none focus:border-primary font-bold resize-none" value={localSettings?.heroTitle} onChange={e => localSettings && setLocalSettings({...localSettings, heroTitle: e.target.value})} /></div>
-                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Footer Description</label><textarea className="h-24 border-2 rounded-xl p-4 dark:bg-black/20 outline-none focus:border-primary font-bold resize-none" value={localSettings?.footerDescription} onChange={e => localSettings && setLocalSettings({...localSettings, footerDescription: e.target.value})} /></div>
+                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Nama Website</label><input className="h-12 border-2 rounded-xl px-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold" value={localSettings?.siteName} onChange={e => localSettings && setLocalSettings({...localSettings, siteName: e.target.value})} /></div>
+                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Logo URL</label><input className="h-12 border-2 rounded-xl px-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold" value={localSettings?.logoUrl} onChange={e => localSettings && setLocalSettings({...localSettings, logoUrl: e.target.value})} /></div>
+                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Hero Image URL</label><input className="h-12 border-2 rounded-xl px-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold" value={localSettings?.heroImage} onChange={e => localSettings && setLocalSettings({...localSettings, heroImage: e.target.value})} /></div>
+                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Hero Title</label><textarea className="h-24 border-2 rounded-xl p-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold resize-none" value={localSettings?.heroTitle} onChange={e => localSettings && setLocalSettings({...localSettings, heroTitle: e.target.value})} /></div>
+                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Footer Description</label><textarea className="h-24 border-2 rounded-xl p-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold resize-none" value={localSettings?.footerDescription} onChange={e => localSettings && setLocalSettings({...localSettings, footerDescription: e.target.value})} /></div>
                   </div>
                 </div>
 
                 <div className="space-y-6">
                   <h3 className="text-xl font-black border-b pb-2">About Us Page Content</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">About Header Title</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.aboutHeaderTitle} onChange={e => localSettings && setLocalSettings({...localSettings, aboutHeaderTitle: e.target.value})} /></div>
-                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">About Header Description</label><textarea className="h-32 border-2 rounded-xl p-4 dark:bg-black/20 outline-none focus:border-primary font-bold resize-none" value={localSettings?.aboutHeaderDesc} onChange={e => localSettings && setLocalSettings({...localSettings, aboutHeaderDesc: e.target.value})} /></div>
-                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">About Section Title</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.aboutSectionTitle} onChange={e => localSettings && setLocalSettings({...localSettings, aboutSectionTitle: e.target.value})} /></div>
-                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">About Section Image URL</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.aboutSectionImage} onChange={e => localSettings && setLocalSettings({...localSettings, aboutSectionImage: e.target.value})} /></div>
-                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">About Section Description</label><textarea className="h-32 border-2 rounded-xl p-4 dark:bg-black/20 outline-none focus:border-primary font-bold resize-none" value={localSettings?.aboutSectionDesc} onChange={e => localSettings && setLocalSettings({...localSettings, aboutSectionDesc: e.target.value})} /></div>
+                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">About Header Title</label><input className="h-12 border-2 rounded-xl px-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold" value={localSettings?.aboutHeaderTitle} onChange={e => localSettings && setLocalSettings({...localSettings, aboutHeaderTitle: e.target.value})} /></div>
+                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">About Header Description</label><textarea className="h-32 border-2 rounded-xl p-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold resize-none" value={localSettings?.aboutHeaderDesc} onChange={e => localSettings && setLocalSettings({...localSettings, aboutHeaderDesc: e.target.value})} /></div>
+                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">About Section Title</label><input className="h-12 border-2 rounded-xl px-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold" value={localSettings?.aboutSectionTitle} onChange={e => localSettings && setLocalSettings({...localSettings, aboutSectionTitle: e.target.value})} /></div>
+                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">About Section Image URL</label><input className="h-12 border-2 rounded-xl px-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold" value={localSettings?.aboutSectionImage} onChange={e => localSettings && setLocalSettings({...localSettings, aboutSectionImage: e.target.value})} /></div>
+                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">About Section Description</label><textarea className="h-32 border-2 rounded-xl p-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold resize-none" value={localSettings?.aboutSectionDesc} onChange={e => localSettings && setLocalSettings({...localSettings, aboutSectionDesc: e.target.value})} /></div>
                   </div>
                 </div>
 
                 <div className="space-y-6">
                   <h3 className="text-xl font-black border-b pb-2">Contact Page Settings</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Contact Email</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.contactEmail} onChange={e => localSettings && setLocalSettings({...localSettings, contactEmail: e.target.value})} /></div>
-                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Contact Phone</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.contactPhone} onChange={e => localSettings && setLocalSettings({...localSettings, contactPhone: e.target.value})} /></div>
-                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Contact Address</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.contactAddress} onChange={e => localSettings && setLocalSettings({...localSettings, contactAddress: e.target.value})} /></div>
+                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Contact Email</label><input className="h-12 border-2 rounded-xl px-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold" value={localSettings?.contactEmail} onChange={e => localSettings && setLocalSettings({...localSettings, contactEmail: e.target.value})} /></div>
+                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Contact Phone</label><input className="h-12 border-2 rounded-xl px-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold" value={localSettings?.contactPhone} onChange={e => localSettings && setLocalSettings({...localSettings, contactPhone: e.target.value})} /></div>
+                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Contact Address</label><input className="h-12 border-2 rounded-xl px-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold" value={localSettings?.contactAddress} onChange={e => localSettings && setLocalSettings({...localSettings, contactAddress: e.target.value})} /></div>
                   </div>
                 </div>
 
                 <div className="space-y-6">
                   <h3 className="text-xl font-black border-b pb-2">Social Media Links</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Instagram URL</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.instagramUrl} onChange={e => localSettings && setLocalSettings({...localSettings, instagramUrl: e.target.value})} /></div>
-                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">TikTok URL</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.tiktokUrl} onChange={e => localSettings && setLocalSettings({...localSettings, tiktokUrl: e.target.value})} /></div>
-                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Facebook URL</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.facebookUrl} onChange={e => localSettings && setLocalSettings({...localSettings, facebookUrl: e.target.value})} /></div>
-                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">YouTube URL</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.youtubeUrl} onChange={e => localSettings && setLocalSettings({...localSettings, youtubeUrl: e.target.value})} /></div>
+                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Instagram URL</label><input className="h-12 border-2 rounded-xl px-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold" value={localSettings?.instagramUrl} onChange={e => localSettings && setLocalSettings({...localSettings, instagramUrl: e.target.value})} /></div>
+                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">TikTok URL</label><input className="h-12 border-2 rounded-xl px-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold" value={localSettings?.tiktokUrl} onChange={e => localSettings && setLocalSettings({...localSettings, tiktokUrl: e.target.value})} /></div>
+                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Facebook URL</label><input className="h-12 border-2 rounded-xl px-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold" value={localSettings?.facebookUrl} onChange={e => localSettings && setLocalSettings({...localSettings, facebookUrl: e.target.value})} /></div>
+                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">YouTube URL</label><input className="h-12 border-2 rounded-xl px-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold" value={localSettings?.youtubeUrl} onChange={e => localSettings && setLocalSettings({...localSettings, youtubeUrl: e.target.value})} /></div>
                   </div>
                 </div>
 
@@ -320,9 +342,9 @@ const AdminDashboard: React.FC = () => {
              {activeTab === 'products' ? (
                <form onSubmit={handleSaveProduct} className="flex flex-col gap-10">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                   <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400 uppercase tracking-widest">Nama Produk</label><input required className="h-14 border-2 rounded-2xl px-6 dark:bg-black/20 outline-none focus:border-primary font-bold" value={editingProduct?.name || ''} onChange={e => setEditingProduct({ ...editingProduct, name: e.target.value })} /></div>
-                   <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400 uppercase tracking-widest">Kategori</label><input required className="h-14 border-2 rounded-2xl px-6 dark:bg-black/20 outline-none focus:border-primary font-bold" value={editingProduct?.category || ''} onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })} /></div>
-                   <div className="flex flex-col gap-2 md:col-span-2"><label className="text-xs font-black text-gray-400 uppercase tracking-widest">Deskripsi</label><textarea required className="h-32 border-2 rounded-2xl p-6 dark:bg-black/20 resize-none outline-none focus:border-primary font-bold" value={editingProduct?.description || ''} onChange={e => setEditingProduct({ ...editingProduct, description: e.target.value })} /></div>
+                   <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400 uppercase tracking-widest">Nama Produk</label><input required className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 focus:border-primary outline-none font-bold" value={editingProduct?.name || ''} onChange={e => setEditingProduct({ ...editingProduct, name: e.target.value })} /></div>
+                   <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400 uppercase tracking-widest">Kategori</label><input required className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 focus:border-primary outline-none font-bold" value={editingProduct?.category || ''} onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })} /></div>
+                   <div className="flex flex-col gap-2 md:col-span-2"><label className="text-xs font-black text-gray-400 uppercase tracking-widest">Deskripsi</label><textarea required className="h-32 border-2 rounded-2xl p-6 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 resize-none focus:border-primary outline-none font-bold" value={editingProduct?.description || ''} onChange={e => setEditingProduct({ ...editingProduct, description: e.target.value })} /></div>
                    
                    <div className="flex flex-col gap-2">
                      <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Foto Utama</label>
@@ -387,8 +409,8 @@ const AdminDashboard: React.FC = () => {
                </form>
              ) : activeTab === 'cs' ? (
                <form onSubmit={handleSaveCS} className="flex flex-col gap-6">
-                  <input required placeholder="Nama CS" className="h-14 border-2 rounded-2xl px-6 dark:bg-black/20 outline-none focus:border-primary font-bold" value={editingCS?.name || ''} onChange={e => setEditingCS({ ...editingCS, name: e.target.value })} />
-                  <input required placeholder="Nomor WA (62...)" className="h-14 border-2 rounded-2xl px-6 dark:bg-black/20 outline-none focus:border-primary font-bold" value={editingCS?.phoneNumber || ''} onChange={e => setEditingCS({ ...editingCS, phoneNumber: e.target.value })} />
+                  <input required placeholder="Nama CS" className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 focus:border-primary outline-none font-bold" value={editingCS?.name || ''} onChange={e => setEditingCS({ ...editingCS, name: e.target.value })} />
+                  <input required placeholder="Nomor WA (62...)" className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 focus:border-primary outline-none font-bold" value={editingCS?.phoneNumber || ''} onChange={e => setEditingCS({ ...editingCS, phoneNumber: e.target.value })} />
                   <button className="h-16 bg-primary text-[#111811] rounded-2xl font-black text-lg">Simpan Kontak CS</button>
                </form>
              ) : (
@@ -397,7 +419,7 @@ const AdminDashboard: React.FC = () => {
                     {editingTestimonial?.imageUrl ? <img src={editingTestimonial.imageUrl} className="w-full h-full object-cover" /> : <span className="material-symbols-outlined text-4xl">add_photo_alternate</span>}
                     <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onChange={e => uploadToImageKit(e.target.files![0]).then(url => setEditingTestimonial({...editingTestimonial, imageUrl: url}))} />
                  </div>
-                 <input placeholder="Nama Pelanggan" className="h-14 border-2 rounded-2xl px-6 dark:bg-black/20 outline-none focus:border-primary font-bold" value={editingTestimonial?.customerName || ''} onChange={e => setEditingTestimonial({ ...editingTestimonial, customerName: e.target.value })} />
+                 <input placeholder="Nama Pelanggan" className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 focus:border-primary outline-none font-bold" value={editingTestimonial?.customerName || ''} onChange={e => setEditingTestimonial({ ...editingTestimonial, customerName: e.target.value })} />
                  <button className="h-16 bg-primary text-[#111811] rounded-2xl font-black text-lg">Simpan Testimoni</button>
                </form>
              )}
