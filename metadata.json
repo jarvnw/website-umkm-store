@@ -1,0 +1,8 @@
+{
+  "name": "LuminaGoods UMKM Store",
+  "description": "Modern UMKM storefront with WhatsApp Checkout, Neon Database, and ImageKit CDN integration.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}

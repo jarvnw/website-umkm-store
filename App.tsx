@@ -1,0 +1,350 @@
+
+import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
+import { HashRouter as Router, Routes, Route, Link, useNavigate, useParams } from 'react-router-dom';
+import { Product, CartItem, CSContact, UserInfo, Variation, SiteSettings, Testimonial } from './types';
+import { dbService } from './services/dbService';
+import Header from './components/Header';
+import Hero from './components/Hero';
+import Footer from './components/Footer';
+import CartSidebar from './components/CartSidebar';
+import ProductCard from './components/ProductCard';
+import AdminDashboard from './pages/Admin/AdminDashboard';
+import AdminLogin from './pages/Admin/AdminLogin';
+
+interface StoreContextType {
+  products: Product[];
+  cart: CartItem[];
+  addToCart: (product: Product, variation?: Variation) => void;
+  removeFromCart: (productId: string, variationId?: string) => void;
+  updateCartQuantity: (productId: string, variationId: string, quantity: number) => void;
+  clearCart: () => void;
+  csContacts: CSContact[];
+  testimonials: Testimonial[];
+  siteSettings: SiteSettings;
+  refreshData: () => void;
+  isCartOpen: boolean;
+  setIsCartOpen: (open: boolean) => void;
+}
+
+const StoreContext = createContext<StoreContextType | undefined>(undefined);
+
+export const useStore = () => {
+  const context = useContext(StoreContext);
+  if (!context) throw new Error('useStore must be used within StoreProvider');
+  return context;
+};
+
+// --- PAGES ---
+
+const HomePage: React.FC = () => {
+  const { products, testimonials } = useStore();
+  const featured = products.filter(p => p.isFeatured);
+  const activeTestimonials = testimonials.filter(t => t.isActive);
+
+  return (
+    <div className="flex flex-col flex-1">
+      <Hero />
+      
+      <section id="products" className="px-4 md:px-10 lg:px-40 py-20 flex justify-center">
+        <div className="max-w-[1200px] w-full">
+          <div className="flex items-end justify-between px-4 pb-8 border-b border-[#dbe6db] dark:border-[#2a3a2a]">
+            <div>
+              <h2 className="text-[#111811] dark:text-white text-3xl font-bold leading-tight">Featured Selection</h2>
+              <p className="text-[#618961] mt-2">Curated quality for your lifestyle</p>
+            </div>
+            <Link to="/products" className="text-primary font-bold hover:underline mb-1">View All</Link>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 py-10">
+            {featured.length > 0 ? (
+              featured.map(product => <ProductCard key={product.id} product={product} />)
+            ) : (
+              <p className="col-span-full text-center text-gray-500 py-20">No featured products available.</p>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="px-4 md:px-10 lg:px-40 py-20 bg-background-light dark:bg-background-dark/50">
+        <div className="max-w-[1200px] mx-auto text-center">
+          <h2 className="text-4xl font-black mb-12 tracking-tight">Why Choose Us</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            {[
+              { icon: 'local_shipping', title: 'Fast Delivery', desc: 'Ships within 24 hours' },
+              { icon: 'verified_user', title: 'Quality Assured', desc: 'Handpicked premium items' },
+              { icon: 'forum', title: 'Easy Order', desc: 'Quick checkout via WhatsApp' },
+              { icon: 'support_agent', title: '24/7 Support', desc: 'Ready to help you anytime' }
+            ].map((item, i) => (
+              <div key={i} className="p-8 bg-white dark:bg-[#1a2e1a] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 transition-transform hover:-translate-y-2">
+                <span className="material-symbols-outlined text-primary text-4xl mb-4">{item.icon}</span>
+                <h3 className="text-xl font-bold mb-2">{item.title}</h3>
+                <p className="text-gray-500 text-sm">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      {activeTestimonials.length > 0 && (
+        <section className="px-4 md:px-10 lg:px-40 py-24">
+          <div className="max-w-[1200px] mx-auto">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl font-black tracking-tight mb-4">Happy Customers</h2>
+              <p className="text-gray-500 font-medium">What they say about our products and services</p>
+            </div>
+            <div className="columns-1 sm:columns-2 lg:columns-3 gap-8 space-y-8">
+              {activeTestimonials.map((t) => (
+                <div key={t.id} className="break-inside-avoid bg-white dark:bg-[#1a2e1a] rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-1">
+                  <img src={t.imageUrl} alt="Customer Review" className="w-full h-auto object-cover" loading="lazy" />
+                  {t.customerName && (
+                    <div className="p-4 border-t border-gray-50 dark:border-gray-800">
+                      <p className="font-black text-sm text-primary uppercase tracking-widest text-center">{t.customerName}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+    </div>
+  );
+};
+
+const ProductDetailPage: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const { products, addToCart } = useStore();
+  const product = products.find(p => p.id === id);
+  const [selectedVar, setSelectedVar] = useState<Variation | null>(null);
+  const [activeMedia, setActiveMedia] = useState<number>(0);
+
+  useEffect(() => {
+    if (product && product.variations?.length > 0) {
+      setSelectedVar(product.variations[0]);
+    }
+  }, [product]);
+
+  if (!product) return <div className="p-20 text-center">Product not found.</div>;
+
+  const allMedia = [product.coverMedia, ...(product.gallery || [])].filter(m => m && m.url);
+
+  return (
+    <div className="px-4 md:px-10 lg:px-40 py-20 flex justify-center">
+      <div className="max-w-[1200px] w-full grid grid-cols-1 lg:grid-cols-2 gap-16">
+        <div className="flex flex-col gap-4">
+          <div className="rounded-3xl overflow-hidden aspect-square bg-gray-50 dark:bg-black/20 relative border border-gray-100 dark:border-gray-800">
+            {allMedia[activeMedia]?.type === 'video' ? (
+              <video src={allMedia[activeMedia].url} className="w-full h-full object-cover" controls autoPlay loop muted />
+            ) : (
+              <img src={allMedia[activeMedia]?.url || product.image} alt={product.name} className="w-full h-full object-cover" />
+            )}
+          </div>
+          <div className="grid grid-cols-5 gap-4">
+            {allMedia.map((m, i) => (
+              <button 
+                key={i} 
+                onClick={() => setActiveMedia(i)}
+                className={`aspect-square rounded-xl overflow-hidden border-2 transition-all ${activeMedia === i ? 'border-primary' : 'border-transparent'}`}
+              >
+                {m.type === 'video' ? (
+                  <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-xs">play_circle</span>
+                  </div>
+                ) : (
+                  <img src={m.url} className="w-full h-full object-cover" />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col justify-center">
+          <span className="text-primary font-black text-sm tracking-widest uppercase mb-4">{product.category}</span>
+          <h1 className="text-5xl font-black mb-8 leading-tight tracking-tight">{product.name}</h1>
+          
+          <p className="text-4xl font-black text-primary mb-10">
+            Rp {(selectedVar?.price || product.price).toLocaleString('id-ID')}
+          </p>
+
+          <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-10 text-lg">{product.description}</p>
+
+          {product.variations?.length > 0 && (
+            <div className="mb-10">
+              <h4 className="text-sm font-black uppercase tracking-widest mb-4">Choose Variation</h4>
+              <div className="flex flex-wrap gap-3">
+                {product.variations.map(v => (
+                  <button 
+                    key={v.id}
+                    onClick={() => setSelectedVar(v)}
+                    className={`px-6 py-3 rounded-xl font-bold border-2 transition-all ${selectedVar?.id === v.id ? 'border-primary bg-primary/10 text-primary' : 'border-gray-200 dark:border-gray-800'}`}
+                  >
+                    {v.name} {v.stock > 0 ? '' : '(Out of Stock)'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <button 
+            onClick={() => addToCart(product, selectedVar || undefined)}
+            disabled={selectedVar && selectedVar.stock <= 0}
+            className="flex items-center justify-center gap-4 bg-primary text-[#111811] h-16 rounded-2xl text-xl font-black hover:scale-105 transition-all shadow-2xl shadow-primary/20 disabled:opacity-50 disabled:scale-100"
+          >
+            <span className="material-symbols-outlined font-black">add_shopping_cart</span>
+            Add to Shopping Cart
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const AboutPage: React.FC = () => {
+  const { siteSettings } = useStore();
+  return (
+    <div className="flex flex-col items-center">
+      <section className="w-full bg-primary/10 py-32 px-4 md:px-10 lg:px-40 flex justify-center text-center">
+        <div className="max-w-[800px]">
+          <h1 className="text-5xl md:text-7xl font-black mb-6">Our Story</h1>
+          <p className="text-xl text-gray-600 dark:text-gray-400 leading-relaxed">
+            {siteSettings.siteName} started as a small UMKM with a big dream: to bring artisanal craftsmanship to the modern home. 
+            We believe that every product has a story, and every detail matters.
+          </p>
+        </div>
+      </section>
+      <section className="max-w-[1200px] w-full px-4 md:px-10 lg:px-40 py-24 grid grid-cols-1 md:grid-cols-2 gap-20 items-center">
+        <div><img src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=1200" className="rounded-3xl shadow-2xl" /></div>
+        <div className="flex flex-col gap-6">
+          <h2 className="text-4xl font-black">Crafted with Purpose</h2>
+          <p className="text-gray-600 dark:text-gray-400 leading-relaxed text-lg">Each item is handpicked for quality. We preserve traditional techniques with modern aesthetic standards.</p>
+        </div>
+      </section>
+    </div>
+  );
+};
+
+const ContactPage: React.FC = () => (
+  <div className="px-4 md:px-10 lg:px-40 py-20 flex justify-center">
+    <div className="max-w-[1200px] w-full grid grid-cols-1 lg:grid-cols-2 gap-20">
+      <div>
+        <h1 className="text-5xl font-black mb-8 tracking-tighter">Get in Touch</h1>
+        <div className="flex flex-col gap-8">
+           <div className="flex gap-6 items-start"><div className="size-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0"><span className="material-symbols-outlined text-3xl">mail</span></div><div><h4 className="font-bold text-lg">Email Us</h4><p className="text-gray-500">hello@luminagoods.id</p></div></div>
+           <div className="flex gap-6 items-start"><div className="size-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0"><span className="material-symbols-outlined text-3xl">forum</span></div><div><h4 className="font-bold text-lg">WhatsApp</h4><p className="text-gray-500">+62 812-3456-7890</p></div></div>
+        </div>
+      </div>
+      <div className="bg-white dark:bg-[#1a2e1a] p-10 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-800">
+        <form className="flex flex-col gap-6" onSubmit={e => { e.preventDefault(); alert('Sent!'); }}>
+          <input placeholder="Name" className="h-12 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-gray-800 rounded-xl px-4 outline-none" required />
+          <input placeholder="Email" className="h-12 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-gray-800 rounded-xl px-4 outline-none" required />
+          <textarea placeholder="Message" className="h-32 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-gray-800 rounded-xl p-4 outline-none resize-none" required />
+          <button className="h-14 bg-primary text-[#111811] rounded-xl font-bold text-lg shadow-xl shadow-primary/20 hover:brightness-110">Send Message</button>
+        </form>
+      </div>
+    </div>
+  </div>
+);
+
+const ProductsPage: React.FC = () => {
+  const { products } = useStore();
+  const [searchTerm, setSearchTerm] = useState('');
+  const filtered = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.category.toLowerCase().includes(searchTerm.toLowerCase()));
+  return (
+    <div className="px-4 md:px-10 lg:px-40 py-20">
+      <div className="max-w-[1200px] mx-auto">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-12">
+          <h1 className="text-4xl font-black uppercase tracking-tighter">Collections</h1>
+          <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search..." className="w-full md:w-96 pl-6 h-14 bg-white dark:bg-[#1a2e1a] border border-gray-200 dark:border-gray-800 rounded-2xl outline-none" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          {filtered.map(product => <ProductCard key={product.id} product={product} />)}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const App: React.FC = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [csContacts, setCSContacts] = useState<CSContact[]>([]);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    const [p, c, s, t] = await Promise.all([
+      dbService.getProducts(), 
+      dbService.getCSContacts(),
+      dbService.getSiteSettings(),
+      dbService.getTestimonials()
+    ]);
+    setProducts(p);
+    setCSContacts(c);
+    setSiteSettings(s);
+    setTestimonials(t);
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+    const savedCart = localStorage.getItem('lumina_cart');
+    if (savedCart) setCart(JSON.parse(savedCart));
+  }, [fetchData]);
+
+  useEffect(() => {
+    localStorage.setItem('lumina_cart', JSON.stringify(cart));
+  }, [cart]);
+
+  const addToCart = (product: Product, variation?: Variation) => {
+    setCart(prev => {
+      const existing = prev.find(item => item.id === product.id && item.selectedVariation?.id === variation?.id);
+      if (existing) {
+        return prev.map(item => (item.id === product.id && item.selectedVariation?.id === variation?.id) ? { ...item, quantity: item.quantity + 1 } : item);
+      }
+      return [...prev, { ...product, selectedVariation: variation, quantity: 1 }];
+    });
+    setIsCartOpen(true);
+  };
+
+  const removeFromCart = (productId: string, variationId?: string) => {
+    setCart(prev => prev.filter(item => !(item.id === productId && item.selectedVariation?.id === variationId)));
+  };
+
+  const updateCartQuantity = (productId: string, variationId: string, quantity: number) => {
+    if (quantity < 1) return removeFromCart(productId, variationId);
+    setCart(prev => prev.map(item => (item.id === productId && item.selectedVariation?.id === variationId) ? { ...item, quantity } : item));
+  };
+
+  const clearCart = () => setCart([]);
+
+  if (!siteSettings) return null;
+
+  return (
+    <StoreContext.Provider value={{ 
+      products, cart, addToCart, removeFromCart, updateCartQuantity, 
+      clearCart, csContacts, testimonials, siteSettings, refreshData: fetchData, isCartOpen, setIsCartOpen 
+    }}>
+      <Router>
+        <div className="min-h-screen flex flex-col">
+          <Header onCartOpen={() => setIsCartOpen(true)} cartCount={cart.reduce((acc, item) => acc + item.quantity, 0)} />
+          <main className="flex-1">
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/products" element={<ProductsPage />} />
+              <Route path="/product/:id" element={<ProductDetailPage />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/contact" element={<ContactPage />} />
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin/*" element={<AdminDashboard />} />
+            </Routes>
+          </main>
+          <Footer />
+          <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+        </div>
+      </Router>
+    </StoreContext.Provider>
+  );
+};
+
+export default App;
