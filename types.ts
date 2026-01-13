@@ -57,6 +57,12 @@ export interface SiteSettings {
   heroTitle: string;
   heroSubtitle: string;
   footerDescription: string;
+  // About Us Page
+  aboutHeaderTitle: string;
+  aboutHeaderDesc: string;
+  aboutSectionTitle: string;
+  aboutSectionDesc: string;
+  aboutSectionImage: string;
   // Contact & Social Media
   contactEmail: string;
   contactPhone: string;

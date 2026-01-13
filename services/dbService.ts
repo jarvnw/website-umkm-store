@@ -34,6 +34,13 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   heroTitle: 'Elegance in Every Detail.',
   heroSubtitle: 'Discover premium goods curated for those who appreciate high-quality craftsmanship and modern minimalist design.',
   footerDescription: 'Crafting a seamless shopping experience for the modern aesthetic. Your one-stop shop for premium, artisanal UMKM goods.',
+  // About Us Defaults
+  aboutHeaderTitle: 'Our Story',
+  aboutHeaderDesc: 'LuminaGoods started as a small UMKM with a big dream: to bring artisanal craftsmanship to the modern home. We believe that every product has a story, and every detail matters.',
+  aboutSectionTitle: 'Crafted with Purpose',
+  aboutSectionDesc: 'Each item is handpicked for quality. We preserve traditional techniques with modern aesthetic standards.',
+  aboutSectionImage: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=1200',
+  // Contact & Social Media
   contactEmail: 'hello@luminagoods.id',
   contactPhone: '+62 812-3456-7890',
   contactAddress: 'Jakarta, Indonesia',

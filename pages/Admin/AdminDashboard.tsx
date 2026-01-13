@@ -260,13 +260,24 @@ const AdminDashboard: React.FC = () => {
           <div className="max-w-4xl mx-auto bg-white dark:bg-[#1a2e1a] p-10 rounded-[40px] border border-gray-100 dark:border-gray-800">
              <form onSubmit={e => { e.preventDefault(); if(localSettings) dbService.saveSiteSettings(localSettings).then(() => { refreshData(); alert('Berhasil!'); }); }} className="flex flex-col gap-10">
                 <div className="space-y-6">
-                  <h3 className="text-xl font-black border-b pb-2">General Settings</h3>
+                  <h3 className="text-xl font-black border-b pb-2">General & Hero Settings</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Nama Website</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.siteName} onChange={e => localSettings && setLocalSettings({...localSettings, siteName: e.target.value})} /></div>
                     <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Logo URL</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.logoUrl} onChange={e => localSettings && setLocalSettings({...localSettings, logoUrl: e.target.value})} /></div>
                     <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Hero Image URL</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.heroImage} onChange={e => localSettings && setLocalSettings({...localSettings, heroImage: e.target.value})} /></div>
                     <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Hero Title</label><textarea className="h-24 border-2 rounded-xl p-4 dark:bg-black/20 outline-none focus:border-primary font-bold resize-none" value={localSettings?.heroTitle} onChange={e => localSettings && setLocalSettings({...localSettings, heroTitle: e.target.value})} /></div>
                     <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Footer Description</label><textarea className="h-24 border-2 rounded-xl p-4 dark:bg-black/20 outline-none focus:border-primary font-bold resize-none" value={localSettings?.footerDescription} onChange={e => localSettings && setLocalSettings({...localSettings, footerDescription: e.target.value})} /></div>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <h3 className="text-xl font-black border-b pb-2">About Us Page Content</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">About Header Title</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.aboutHeaderTitle} onChange={e => localSettings && setLocalSettings({...localSettings, aboutHeaderTitle: e.target.value})} /></div>
+                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">About Header Description</label><textarea className="h-32 border-2 rounded-xl p-4 dark:bg-black/20 outline-none focus:border-primary font-bold resize-none" value={localSettings?.aboutHeaderDesc} onChange={e => localSettings && setLocalSettings({...localSettings, aboutHeaderDesc: e.target.value})} /></div>
+                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">About Section Title</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.aboutSectionTitle} onChange={e => localSettings && setLocalSettings({...localSettings, aboutSectionTitle: e.target.value})} /></div>
+                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">About Section Image URL</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.aboutSectionImage} onChange={e => localSettings && setLocalSettings({...localSettings, aboutSectionImage: e.target.value})} /></div>
+                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">About Section Description</label><textarea className="h-32 border-2 rounded-xl p-4 dark:bg-black/20 outline-none focus:border-primary font-bold resize-none" value={localSettings?.aboutSectionDesc} onChange={e => localSettings && setLocalSettings({...localSettings, aboutSectionDesc: e.target.value})} /></div>
                   </div>
                 </div>
 

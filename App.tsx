@@ -206,18 +206,17 @@ const AboutPage: React.FC = () => {
     <div className="flex flex-col items-center">
       <section className="w-full bg-primary/10 py-32 px-4 md:px-10 lg:px-40 flex justify-center text-center">
         <div className="max-w-[800px]">
-          <h1 className="text-5xl md:text-7xl font-black mb-6">Our Story</h1>
-          <p className="text-xl text-gray-600 dark:text-gray-400 leading-relaxed">
-            {siteSettings.siteName} started as a small UMKM with a big dream: to bring artisanal craftsmanship to the modern home. 
-            We believe that every product has a story, and every detail matters.
+          <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter">{siteSettings.aboutHeaderTitle}</h1>
+          <p className="text-xl text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-line">
+            {siteSettings.aboutHeaderDesc}
           </p>
         </div>
       </section>
       <section className="max-w-[1200px] w-full px-4 md:px-10 lg:px-40 py-24 grid grid-cols-1 md:grid-cols-2 gap-20 items-center">
-        <div><img src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=1200" className="rounded-3xl shadow-2xl" /></div>
+        <div><img src={siteSettings.aboutSectionImage} className="rounded-3xl shadow-2xl w-full object-cover aspect-video md:aspect-square" alt="About Section" /></div>
         <div className="flex flex-col gap-6">
-          <h2 className="text-4xl font-black">Crafted with Purpose</h2>
-          <p className="text-gray-600 dark:text-gray-400 leading-relaxed text-lg">Each item is handpicked for quality. We preserve traditional techniques with modern aesthetic standards.</p>
+          <h2 className="text-4xl font-black tracking-tight">{siteSettings.aboutSectionTitle}</h2>
+          <p className="text-gray-600 dark:text-gray-400 leading-relaxed text-lg whitespace-pre-line">{siteSettings.aboutSectionDesc}</p>
         </div>
       </section>
     </div>
