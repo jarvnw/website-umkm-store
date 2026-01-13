@@ -57,6 +57,14 @@ export interface SiteSettings {
   heroTitle: string;
   heroSubtitle: string;
   footerDescription: string;
+  // Contact & Social Media
+  contactEmail: string;
+  contactPhone: string;
+  contactAddress: string;
+  instagramUrl: string;
+  tiktokUrl: string;
+  facebookUrl: string;
+  youtubeUrl: string;
 }
 
 export interface AdminCredentials {

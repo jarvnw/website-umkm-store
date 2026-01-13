@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useNavigate, useParams } from 'react-router-dom';
 import { Product, CartItem, CSContact, UserInfo, Variation, SiteSettings, Testimonial } from './types';
-import { dbService } from './services/dbService';
+import { dbService, DEFAULT_SETTINGS } from './services/dbService';
 import Header from './components/Header';
 import Hero from './components/Hero';
 import Footer from './components/Footer';
@@ -224,27 +224,75 @@ const AboutPage: React.FC = () => {
   );
 };
 
-const ContactPage: React.FC = () => (
-  <div className="px-4 md:px-10 lg:px-40 py-20 flex justify-center">
-    <div className="max-w-[1200px] w-full grid grid-cols-1 lg:grid-cols-2 gap-20">
-      <div>
-        <h1 className="text-5xl font-black mb-8 tracking-tighter">Get in Touch</h1>
-        <div className="flex flex-col gap-8">
-           <div className="flex gap-6 items-start"><div className="size-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0"><span className="material-symbols-outlined text-3xl">mail</span></div><div><h4 className="font-bold text-lg">Email Us</h4><p className="text-gray-500">hello@luminagoods.id</p></div></div>
-           <div className="flex gap-6 items-start"><div className="size-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0"><span className="material-symbols-outlined text-3xl">forum</span></div><div><h4 className="font-bold text-lg">WhatsApp</h4><p className="text-gray-500">+62 812-3456-7890</p></div></div>
+const ContactPage: React.FC = () => {
+  const { siteSettings } = useStore();
+
+  return (
+    <div className="px-4 md:px-10 lg:px-40 py-24 flex justify-center">
+      <div className="max-w-[1000px] w-full text-center">
+        <h1 className="text-5xl md:text-7xl font-black mb-8 tracking-tighter">Get in Touch</h1>
+        <p className="text-xl text-gray-500 dark:text-gray-400 mb-16 max-w-[700px] mx-auto">
+          We're here to help! Connect with us through any of these platforms or visit us at our office.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20">
+           {/* Phone */}
+           <div className="bg-white dark:bg-[#1a2e1a] p-10 rounded-[40px] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl transition-all">
+              <div className="size-16 rounded-3xl bg-primary/10 flex items-center justify-center text-primary mx-auto mb-6">
+                <span className="material-symbols-outlined text-4xl">call</span>
+              </div>
+              <h4 className="font-black text-xl mb-2">Phone</h4>
+              <p className="text-gray-500 font-bold">{siteSettings.contactPhone}</p>
+           </div>
+           
+           {/* Email */}
+           <div className="bg-white dark:bg-[#1a2e1a] p-10 rounded-[40px] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl transition-all">
+              <div className="size-16 rounded-3xl bg-primary/10 flex items-center justify-center text-primary mx-auto mb-6">
+                <span className="material-symbols-outlined text-4xl">mail</span>
+              </div>
+              <h4 className="font-black text-xl mb-2">Email</h4>
+              <p className="text-gray-500 font-bold">{siteSettings.contactEmail}</p>
+           </div>
+
+           {/* Location */}
+           <div className="bg-white dark:bg-[#1a2e1a] p-10 rounded-[40px] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl transition-all">
+              <div className="size-16 rounded-3xl bg-primary/10 flex items-center justify-center text-primary mx-auto mb-6">
+                <span className="material-symbols-outlined text-4xl">location_on</span>
+              </div>
+              <h4 className="font-black text-xl mb-2">Address</h4>
+              <p className="text-gray-500 font-bold">{siteSettings.contactAddress}</p>
+           </div>
+        </div>
+
+        <div className="flex flex-col items-center gap-8">
+          <h3 className="text-2xl font-black tracking-tight uppercase tracking-widest text-xs text-primary">Find Us on Social Media</h3>
+          <div className="flex flex-wrap justify-center gap-6">
+            {siteSettings.instagramUrl && (
+              <a href={siteSettings.instagramUrl} target="_blank" rel="noopener noreferrer" className="size-14 rounded-2xl bg-white dark:bg-[#1a2e1a] border border-gray-100 dark:border-gray-800 flex items-center justify-center hover:scale-110 transition-transform shadow-sm">
+                <img src="https://cdn-icons-png.flaticon.com/512/174/174855.png" className="size-6 grayscale hover:grayscale-0 transition-all" alt="Instagram" />
+              </a>
+            )}
+            {siteSettings.tiktokUrl && (
+              <a href={siteSettings.tiktokUrl} target="_blank" rel="noopener noreferrer" className="size-14 rounded-2xl bg-white dark:bg-[#1a2e1a] border border-gray-100 dark:border-gray-800 flex items-center justify-center hover:scale-110 transition-transform shadow-sm">
+                <img src="https://cdn-icons-png.flaticon.com/512/3046/3046121.png" className="size-6 grayscale hover:grayscale-0 transition-all" alt="TikTok" />
+              </a>
+            )}
+            {siteSettings.facebookUrl && (
+              <a href={siteSettings.facebookUrl} target="_blank" rel="noopener noreferrer" className="size-14 rounded-2xl bg-white dark:bg-[#1a2e1a] border border-gray-100 dark:border-gray-800 flex items-center justify-center hover:scale-110 transition-transform shadow-sm">
+                <img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" className="size-6 grayscale hover:grayscale-0 transition-all" alt="Facebook" />
+              </a>
+            )}
+            {siteSettings.youtubeUrl && (
+              <a href={siteSettings.youtubeUrl} target="_blank" rel="noopener noreferrer" className="size-14 rounded-2xl bg-white dark:bg-[#1a2e1a] border border-gray-100 dark:border-gray-800 flex items-center justify-center hover:scale-110 transition-transform shadow-sm">
+                <img src="https://cdn-icons-png.flaticon.com/512/1384/1384060.png" className="size-6 grayscale hover:grayscale-0 transition-all" alt="YouTube" />
+              </a>
+            )}
+          </div>
         </div>
       </div>
-      <div className="bg-white dark:bg-[#1a2e1a] p-10 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-800">
-        <form className="flex flex-col gap-6" onSubmit={e => { e.preventDefault(); alert('Sent!'); }}>
-          <input placeholder="Name" className="h-12 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-gray-800 rounded-xl px-4 outline-none" required />
-          <input placeholder="Email" className="h-12 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-gray-800 rounded-xl px-4 outline-none" required />
-          <textarea placeholder="Message" className="h-32 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-gray-800 rounded-xl p-4 outline-none resize-none" required />
-          <button className="h-14 bg-primary text-[#111811] rounded-xl font-bold text-lg shadow-xl shadow-primary/20 hover:brightness-110">Send Message</button>
-        </form>
-      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const ProductsPage: React.FC = () => {
   const { products } = useStore();
@@ -270,26 +318,36 @@ const App: React.FC = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [csContacts, setCSContacts] = useState<CSContact[]>([]);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
-  const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
-    const [p, c, s, t] = await Promise.all([
-      dbService.getProducts(), 
-      dbService.getCSContacts(),
-      dbService.getSiteSettings(),
-      dbService.getTestimonials()
-    ]);
-    setProducts(p);
-    setCSContacts(c);
-    setSiteSettings(s);
-    setTestimonials(t);
+    try {
+      const [p, c, s, t] = await Promise.all([
+        dbService.getProducts(), 
+        dbService.getCSContacts(),
+        dbService.getSiteSettings(),
+        dbService.getTestimonials()
+      ]);
+      setProducts(p || []);
+      setCSContacts(c || []);
+      if (s) setSiteSettings(s);
+      setTestimonials(t || []);
+    } catch (e) {
+      console.error("Gagal memuat data:", e);
+    }
   }, []);
 
   useEffect(() => {
     fetchData();
     const savedCart = localStorage.getItem('lumina_cart');
-    if (savedCart) setCart(JSON.parse(savedCart));
+    if (savedCart) {
+      try {
+        setCart(JSON.parse(savedCart));
+      } catch (e) {
+        localStorage.removeItem('lumina_cart');
+      }
+    }
   }, [fetchData]);
 
   useEffect(() => {
@@ -317,8 +375,6 @@ const App: React.FC = () => {
   };
 
   const clearCart = () => setCart([]);
-
-  if (!siteSettings) return null;
 
   return (
     <StoreContext.Provider value={{ 

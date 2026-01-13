@@ -23,8 +23,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://ik.imagekit.io">
+  
+  <!-- Pemuatan Font Inter -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet"/>
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  
+  <!-- Pemuatan Material Symbols Outlined (Versi Paling Stabil) -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
   
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <script>
@@ -46,28 +50,59 @@
     }
   </script>
   <style>
+    /* CSS Kritis untuk Material Symbols */
     .material-symbols-outlined {
+      font-family: 'Material Symbols Outlined' !important;
+      font-weight: normal;
+      font-style: normal;
+      font-size: 24px; /* default size */
+      line-height: 1;
+      display: inline-block;
+      white-space: nowrap;
+      word-wrap: normal;
+      direction: ltr;
+      -webkit-font-feature-settings: 'liga';
+      -webkit-font-smoothing: antialiased;
       font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
     }
+
     body {
       -webkit-tap-highlight-color: transparent;
       scroll-behavior: smooth;
+    }
+
+    #root:empty {
+      background: #f6f8f6;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #root:empty::after {
+      content: "Memuat Toko...";
+      font-family: 'Inter', sans-serif;
+      font-weight: 900;
+      color: #13ec13;
+      font-size: 1.5rem;
+      letter-spacing: -0.05em;
     }
   </style>
 <script type="importmap">
 {
   "imports": {
     "react": "https://esm.sh/react@^19.2.3",
+    "react-dom": "https://esm.sh/react-dom@^19.2.3",
+    "react-dom/client": "https://esm.sh/react-dom@^19.2.3/client",
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.12.0",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react-router-dom": "https://esm.sh/react-router-dom@^7.12.0"
+    "react/": "https://esm.sh/react@^19.2.3/"
   }
 }
 </script>
 </head>
 <body class="bg-background-light dark:bg-background-dark font-display text-[#111811] dark:text-white transition-colors duration-300">
   <div id="root"></div>
-  <!-- Tambahkan baris di bawah ini untuk memanggil file utama -->
-  <script type="module" src="/index.tsx"></script>
+  <script type="module" src="./index.tsx"></script>
 </body>
 </html>

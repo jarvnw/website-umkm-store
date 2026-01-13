@@ -5,9 +5,21 @@ import { dbService } from '../../services/dbService';
 import { Product, CSContact, Media, Variation, SiteSettings, Testimonial, AdminCredentials } from '../../types';
 import { useStore } from '../../App';
 
-// Access environment variables using process.env as per project configuration
-const IK_PUBLIC_KEY = process.env.VITE_IMAGEKIT_PUBLIC_KEY || '';
-const IK_URL_ENDPOINT = process.env.VITE_IMAGEKIT_URL_ENDPOINT || '';
+// Fungsi helper untuk mengambil environment variable secara aman
+const getEnv = (key: string): string => {
+  try {
+    if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
+      return (import.meta as any).env[key] || '';
+    }
+    if (typeof process !== 'undefined' && process.env) {
+      return process.env[key] || '';
+    }
+  } catch (e) {}
+  return '';
+};
+
+const IK_PUBLIC_KEY = getEnv('VITE_IMAGEKIT_PUBLIC_KEY');
+const IK_URL_ENDPOINT = getEnv('VITE_IMAGEKIT_URL_ENDPOINT');
 
 const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'products' | 'cs' | 'site' | 'testimonials' | 'security'>('products');
@@ -36,7 +48,7 @@ const AdminDashboard: React.FC = () => {
 
   const uploadToImageKit = async (file: File): Promise<string> => {
     if (!IK_PUBLIC_KEY || !IK_URL_ENDPOINT) {
-      alert('Error: Kredensial ImageKit belum diatur di Environment Variables.');
+      alert(`Error: Kredensial ImageKit tidak ditemukan.\nHarap pastikan VITE_IMAGEKIT_PUBLIC_KEY & VITE_IMAGEKIT_URL_ENDPOINT sudah terpasang.`);
       throw new Error('Missing IK Credentials');
     }
     setIsUploading(true);
@@ -54,7 +66,7 @@ const AdminDashboard: React.FC = () => {
       if (!response.ok) throw new Error(result.message || 'Unggahan gagal');
       return result.url;
     } catch (error) {
-      alert('Gagal mengunggah gambar ke ImageKit.');
+      alert('Gagal mengunggah gambar ke ImageKit. Periksa koneksi atau kredensial.');
       throw error;
     } finally {
       setIsUploading(false);
@@ -75,6 +87,14 @@ const AdminDashboard: React.FC = () => {
         return { ...prev, gallery };
       });
     } catch (err) {}
+  };
+
+  const removeGalleryMedia = (index: number) => {
+    setEditingProduct(prev => {
+      const gallery = [...(prev?.gallery || [])];
+      gallery.splice(index, 1);
+      return { ...prev, gallery };
+    });
   };
 
   const handleAddVariation = () => {
@@ -233,19 +253,42 @@ const AdminDashboard: React.FC = () => {
              <form onSubmit={e => { e.preventDefault(); dbService.saveAdminCredentials(adminCreds).then(() => alert('Tersimpan!')); }} className="flex flex-col gap-6">
                 <input required className="h-14 border-2 rounded-2xl px-6 dark:bg-black/20 outline-none focus:border-primary font-bold" value={adminCreds.username} onChange={e => setAdminCreds({...adminCreds, username: e.target.value})} placeholder="Username" />
                 <input required type="password" className="h-14 border-2 rounded-2xl px-6 dark:bg-black/20 outline-none focus:border-primary font-bold" value={adminCreds.password} onChange={e => setAdminCreds({...adminCreds, password: e.target.value})} placeholder="Password Baru" />
-                <button className="h-16 bg-red-500 text-white rounded-2xl font-black text-lg">Simpan Kredensial</button>
+                <button className="h-16 bg-primary text-[#111811] rounded-2xl font-black text-lg shadow-xl shadow-primary/20">Simpan Kredensial</button>
              </form>
           </div>
         ) : (
-          <div className="max-w-3xl mx-auto bg-white dark:bg-[#1a2e1a] p-10 rounded-[40px] border border-gray-100 dark:border-gray-800">
-             <form onSubmit={e => { e.preventDefault(); if(localSettings) dbService.saveSiteSettings(localSettings).then(() => { refreshData(); alert('Berhasil!'); }); }} className="flex flex-col gap-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Nama Website</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.siteName} onChange={e => localSettings && setLocalSettings({...localSettings, siteName: e.target.value})} /></div>
-                   <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Logo URL</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.logoUrl} onChange={e => localSettings && setLocalSettings({...localSettings, logoUrl: e.target.value})} /></div>
-                   <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Hero Image URL</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.heroImage} onChange={e => localSettings && setLocalSettings({...localSettings, heroImage: e.target.value})} /></div>
-                   <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Hero Title</label><textarea className="h-24 border-2 rounded-xl p-4 dark:bg-black/20 outline-none focus:border-primary font-bold resize-none" value={localSettings?.heroTitle} onChange={e => localSettings && setLocalSettings({...localSettings, heroTitle: e.target.value})} /></div>
+          <div className="max-w-4xl mx-auto bg-white dark:bg-[#1a2e1a] p-10 rounded-[40px] border border-gray-100 dark:border-gray-800">
+             <form onSubmit={e => { e.preventDefault(); if(localSettings) dbService.saveSiteSettings(localSettings).then(() => { refreshData(); alert('Berhasil!'); }); }} className="flex flex-col gap-10">
+                <div className="space-y-6">
+                  <h3 className="text-xl font-black border-b pb-2">General Settings</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Nama Website</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.siteName} onChange={e => localSettings && setLocalSettings({...localSettings, siteName: e.target.value})} /></div>
+                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Logo URL</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.logoUrl} onChange={e => localSettings && setLocalSettings({...localSettings, logoUrl: e.target.value})} /></div>
+                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Hero Image URL</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.heroImage} onChange={e => localSettings && setLocalSettings({...localSettings, heroImage: e.target.value})} /></div>
+                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Hero Title</label><textarea className="h-24 border-2 rounded-xl p-4 dark:bg-black/20 outline-none focus:border-primary font-bold resize-none" value={localSettings?.heroTitle} onChange={e => localSettings && setLocalSettings({...localSettings, heroTitle: e.target.value})} /></div>
+                  </div>
                 </div>
-                <button className="h-16 bg-primary text-[#111811] rounded-2xl font-black text-lg">Update Pengaturan Situs</button>
+
+                <div className="space-y-6">
+                  <h3 className="text-xl font-black border-b pb-2">Contact Page Settings</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Contact Email</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.contactEmail} onChange={e => localSettings && setLocalSettings({...localSettings, contactEmail: e.target.value})} /></div>
+                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Contact Phone</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.contactPhone} onChange={e => localSettings && setLocalSettings({...localSettings, contactPhone: e.target.value})} /></div>
+                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Contact Address</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.contactAddress} onChange={e => localSettings && setLocalSettings({...localSettings, contactAddress: e.target.value})} /></div>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <h3 className="text-xl font-black border-b pb-2">Social Media Links</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Instagram URL</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.instagramUrl} onChange={e => localSettings && setLocalSettings({...localSettings, instagramUrl: e.target.value})} /></div>
+                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">TikTok URL</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.tiktokUrl} onChange={e => localSettings && setLocalSettings({...localSettings, tiktokUrl: e.target.value})} /></div>
+                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Facebook URL</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.facebookUrl} onChange={e => localSettings && setLocalSettings({...localSettings, facebookUrl: e.target.value})} /></div>
+                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">YouTube URL</label><input className="h-12 border-2 rounded-xl px-4 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.youtubeUrl} onChange={e => localSettings && setLocalSettings({...localSettings, youtubeUrl: e.target.value})} /></div>
+                  </div>
+                </div>
+
+                <button className="h-16 bg-primary text-[#111811] rounded-2xl font-black text-lg shadow-xl shadow-primary/20">Update Pengaturan Situs</button>
              </form>
           </div>
         )}
@@ -269,7 +312,7 @@ const AdminDashboard: React.FC = () => {
                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400 uppercase tracking-widest">Kategori</label><input required className="h-14 border-2 rounded-2xl px-6 dark:bg-black/20 outline-none focus:border-primary font-bold" value={editingProduct?.category || ''} onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })} /></div>
                    <div className="flex flex-col gap-2 md:col-span-2"><label className="text-xs font-black text-gray-400 uppercase tracking-widest">Deskripsi</label><textarea required className="h-32 border-2 rounded-2xl p-6 dark:bg-black/20 resize-none outline-none focus:border-primary font-bold" value={editingProduct?.description || ''} onChange={e => setEditingProduct({ ...editingProduct, description: e.target.value })} /></div>
                    
-                   <div className="flex flex-col gap-2 md:col-span-2">
+                   <div className="flex flex-col gap-2">
                      <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Foto Utama</label>
                      <div className="relative aspect-video rounded-3xl bg-gray-50 dark:bg-black/20 border-2 border-dashed border-gray-200 dark:border-gray-800 flex items-center justify-center overflow-hidden group">
                        {editingProduct?.coverMedia?.url || editingProduct?.image ? (
@@ -277,6 +320,30 @@ const AdminDashboard: React.FC = () => {
                        ) : <span className="material-symbols-outlined text-4xl text-gray-200">add_photo_alternate</span>}
                        <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onChange={e => handleMediaUpload(e, true)} disabled={isUploading} />
                        {isUploading && <div className="absolute inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center text-white font-black">Uploading...</div>}
+                     </div>
+                   </div>
+
+                   <div className="flex flex-col gap-2">
+                     <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Media Galeri (Maks 9)</label>
+                     <div className="grid grid-cols-3 gap-3 h-full min-h-[160px]">
+                        {(editingProduct?.gallery || []).map((m, idx) => (
+                          <div key={idx} className="relative aspect-square rounded-2xl bg-gray-50 dark:bg-black/20 overflow-hidden group">
+                            {m.type === 'video' ? (
+                              <video src={m.url} className="w-full h-full object-cover" />
+                            ) : (
+                              <img src={m.url} className="w-full h-full object-cover" />
+                            )}
+                            <button type="button" onClick={() => removeGalleryMedia(idx)} className="absolute top-1 right-1 size-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <span className="material-symbols-outlined text-sm">close</span>
+                            </button>
+                          </div>
+                        ))}
+                        {(editingProduct?.gallery?.length || 0) < 9 && (
+                          <div className="relative aspect-square rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-800 flex items-center justify-center hover:border-primary hover:text-primary transition-all cursor-pointer">
+                            <span className="material-symbols-outlined">add</span>
+                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*,video/*" onChange={e => handleMediaUpload(e, false)} disabled={isUploading} />
+                          </div>
+                        )}
                      </div>
                    </div>
 

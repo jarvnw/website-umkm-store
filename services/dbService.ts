@@ -1,9 +1,25 @@
 
 import { Product, CSContact, SiteSettings, Testimonial, AdminCredentials } from '../types';
 
-// Access environment variables using process.env as per project configuration
-const NEON_API_URL = process.env.VITE_NEON_API_URL || '';
-const NEON_API_KEY = process.env.VITE_NEON_API_KEY || '';
+// Fungsi helper untuk mengambil environment variable secara aman di berbagai environment
+const getEnv = (key: string): string => {
+  try {
+    // Coba standard Vite
+    if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
+      return (import.meta as any).env[key] || '';
+    }
+    // Coba standard Node/CJS (jika ada polyfill)
+    if (typeof process !== 'undefined' && process.env) {
+      return process.env[key] || '';
+    }
+  } catch (e) {
+    console.warn(`Gagal mengakses environment variable: ${key}`);
+  }
+  return '';
+};
+
+const NEON_API_URL = getEnv('VITE_NEON_API_URL');
+const NEON_API_KEY = getEnv('VITE_NEON_API_KEY');
 
 const PRODUCTS_KEY = 'lumina_products';
 const CS_KEY = 'lumina_cs_contacts';
@@ -11,13 +27,20 @@ const TESTIMONIALS_KEY = 'lumina_testimonials';
 const SITE_SETTINGS_KEY = 'lumina_site_settings';
 const ADMIN_KEY = 'lumina_admin_creds';
 
-const DEFAULT_SETTINGS: SiteSettings = {
+export const DEFAULT_SETTINGS: SiteSettings = {
   siteName: 'LuminaGoods',
   logoUrl: '',
   heroImage: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&q=80&w=2000',
   heroTitle: 'Elegance in Every Detail.',
   heroSubtitle: 'Discover premium goods curated for those who appreciate high-quality craftsmanship and modern minimalist design.',
-  footerDescription: 'Crafting a seamless shopping experience for the modern aesthetic. Your one-stop shop for premium, artisanal UMKM goods.'
+  footerDescription: 'Crafting a seamless shopping experience for the modern aesthetic. Your one-stop shop for premium, artisanal UMKM goods.',
+  contactEmail: 'hello@luminagoods.id',
+  contactPhone: '+62 812-3456-7890',
+  contactAddress: 'Jakarta, Indonesia',
+  instagramUrl: 'https://instagram.com/',
+  tiktokUrl: 'https://tiktok.com/',
+  facebookUrl: 'https://facebook.com/',
+  youtubeUrl: 'https://youtube.com/'
 };
 
 async function apiFetch(endpoint: string, options?: RequestInit) {
