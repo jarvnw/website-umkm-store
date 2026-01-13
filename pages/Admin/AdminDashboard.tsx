@@ -5,6 +5,7 @@ import { dbService } from '../../services/dbService';
 import { Product, CSContact, Media, Variation, SiteSettings, Testimonial, AdminCredentials } from '../../types';
 import { useStore } from '../../App';
 
+// Access environment variables using process.env as per project configuration
 const IK_PUBLIC_KEY = process.env.VITE_IMAGEKIT_PUBLIC_KEY || '';
 const IK_URL_ENDPOINT = process.env.VITE_IMAGEKIT_URL_ENDPOINT || '';
 
@@ -35,7 +36,7 @@ const AdminDashboard: React.FC = () => {
 
   const uploadToImageKit = async (file: File): Promise<string> => {
     if (!IK_PUBLIC_KEY || !IK_URL_ENDPOINT) {
-      alert('Error: Kredensial ImageKit belum diatur.');
+      alert('Error: Kredensial ImageKit belum diatur di Environment Variables.');
       throw new Error('Missing IK Credentials');
     }
     setIsUploading(true);
@@ -53,7 +54,7 @@ const AdminDashboard: React.FC = () => {
       if (!response.ok) throw new Error(result.message || 'Unggahan gagal');
       return result.url;
     } catch (error) {
-      alert('Gagal mengunggah gambar.');
+      alert('Gagal mengunggah gambar ke ImageKit.');
       throw error;
     } finally {
       setIsUploading(false);
@@ -121,7 +122,6 @@ const AdminDashboard: React.FC = () => {
     setEditingProduct(null);
   };
 
-  // Fix: Added handleSaveCS to handle customer service contact submission
   const handleSaveCS = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingCS) return;
@@ -137,7 +137,6 @@ const AdminDashboard: React.FC = () => {
     setEditingCS(null);
   };
 
-  // Fix: Added handleSaveTestimonial to handle testimonial submission
   const handleSaveTestimonial = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingTestimonial) return;
@@ -276,4 +275,58 @@ const AdminDashboard: React.FC = () => {
                        {editingProduct?.coverMedia?.url || editingProduct?.image ? (
                          <img src={editingProduct.coverMedia?.url || editingProduct.image} className="absolute inset-0 w-full h-full object-contain" />
                        ) : <span className="material-symbols-outlined text-4xl text-gray-200">add_photo_alternate</span>}
-                       <input
+                       <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onChange={e => handleMediaUpload(e, true)} disabled={isUploading} />
+                       {isUploading && <div className="absolute inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center text-white font-black">Uploading...</div>}
+                     </div>
+                   </div>
+
+                   <div className="flex flex-col gap-4 md:col-span-2">
+                     <div className="flex items-center justify-between">
+                       <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Variasi Produk</label>
+                       <button type="button" onClick={handleAddVariation} className="text-primary font-black text-xs uppercase flex items-center gap-1 hover:underline">
+                         <span className="material-symbols-outlined text-sm">add</span> Tambah Variasi
+                       </button>
+                     </div>
+                     <div className="flex flex-col gap-3">
+                       {editingProduct?.variations?.map((v, idx) => (
+                         <div key={v.id} className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-gray-50 dark:bg-black/20 p-4 rounded-2xl items-center">
+                           <input placeholder="Nama (Contoh: XL)" className="bg-white dark:bg-black/20 border-none rounded-xl h-10 px-4 font-bold text-sm" value={v.name} onChange={e => updateVariation(v.id, 'name', e.target.value)} />
+                           <input type="number" placeholder="Harga" className="bg-white dark:bg-black/20 border-none rounded-xl h-10 px-4 font-bold text-sm" value={v.price} onChange={e => updateVariation(v.id, 'price', Number(e.target.value))} />
+                           <input type="number" placeholder="Stok" className="bg-white dark:bg-black/20 border-none rounded-xl h-10 px-4 font-bold text-sm" value={v.stock} onChange={e => updateVariation(v.id, 'stock', Number(e.target.value))} />
+                           <button type="button" onClick={() => removeVariation(v.id)} className="text-red-500 hover:text-red-700 font-bold text-xs uppercase">Hapus</button>
+                         </div>
+                       ))}
+                     </div>
+                   </div>
+                   
+                   <label className="flex items-center gap-3 cursor-pointer">
+                     <input type="checkbox" checked={editingProduct?.isFeatured} onChange={e => setEditingProduct({...editingProduct, isFeatured: e.target.checked})} className="size-6 rounded-lg text-primary focus:ring-primary border-gray-200 dark:border-gray-800" />
+                     <span className="font-black text-sm uppercase tracking-widest">Tampilkan di Halaman Utama</span>
+                   </label>
+                 </div>
+                 <button type="submit" disabled={isUploading} className="h-16 bg-primary text-[#111811] rounded-2xl font-black text-xl shadow-2xl shadow-primary/30 hover:scale-[1.02] transition-all disabled:opacity-50">Simpan Produk Sekarang</button>
+               </form>
+             ) : activeTab === 'cs' ? (
+               <form onSubmit={handleSaveCS} className="flex flex-col gap-6">
+                  <input required placeholder="Nama CS" className="h-14 border-2 rounded-2xl px-6 dark:bg-black/20 outline-none focus:border-primary font-bold" value={editingCS?.name || ''} onChange={e => setEditingCS({ ...editingCS, name: e.target.value })} />
+                  <input required placeholder="Nomor WA (62...)" className="h-14 border-2 rounded-2xl px-6 dark:bg-black/20 outline-none focus:border-primary font-bold" value={editingCS?.phoneNumber || ''} onChange={e => setEditingCS({ ...editingCS, phoneNumber: e.target.value })} />
+                  <button className="h-16 bg-primary text-[#111811] rounded-2xl font-black text-lg">Simpan Kontak CS</button>
+               </form>
+             ) : (
+               <form onSubmit={handleSaveTestimonial} className="flex flex-col gap-6">
+                 <div className="relative aspect-square max-w-sm mx-auto rounded-3xl bg-gray-50 dark:bg-black/20 border-2 border-dashed border-gray-200 dark:border-gray-800 flex items-center justify-center overflow-hidden">
+                    {editingTestimonial?.imageUrl ? <img src={editingTestimonial.imageUrl} className="w-full h-full object-cover" /> : <span className="material-symbols-outlined text-4xl">add_photo_alternate</span>}
+                    <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onChange={e => uploadToImageKit(e.target.files![0]).then(url => setEditingTestimonial({...editingTestimonial, imageUrl: url}))} />
+                 </div>
+                 <input placeholder="Nama Pelanggan" className="h-14 border-2 rounded-2xl px-6 dark:bg-black/20 outline-none focus:border-primary font-bold" value={editingTestimonial?.customerName || ''} onChange={e => setEditingTestimonial({ ...editingTestimonial, customerName: e.target.value })} />
+                 <button className="h-16 bg-primary text-[#111811] rounded-2xl font-black text-lg">Simpan Testimoni</button>
+               </form>
+             )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AdminDashboard;

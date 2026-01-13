@@ -1,6 +1,7 @@
 
 import { Product, CSContact, SiteSettings, Testimonial, AdminCredentials } from '../types';
 
+// Access environment variables using process.env as per project configuration
 const NEON_API_URL = process.env.VITE_NEON_API_URL || '';
 const NEON_API_KEY = process.env.VITE_NEON_API_KEY || '';
 
