@@ -13,12 +13,24 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
   return (
     <div className="flex flex-col group h-full">
-      <div className="relative aspect-[4/5] rounded-2xl overflow-hidden mb-4 shadow-sm border border-gray-100 dark:border-gray-800">
-        <img 
-          src={product.image} 
-          alt={product.name} 
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-        />
+      <div className="relative aspect-[4/5] rounded-2xl overflow-hidden mb-4 shadow-sm border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-black/20">
+        {product.coverMedia?.type === 'video' ? (
+          <video 
+            src={product.coverMedia.url} 
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+            autoPlay 
+            loop 
+            muted 
+            playsInline 
+          />
+        ) : (
+          <img 
+            src={product.image} 
+            alt={product.name} 
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+          />
+        )}
+        
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors"></div>
         
         <button 

@@ -54,7 +54,12 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   contactEmail: 'halo@umkm.id',
   contactPhone: '6281234567890',
   contactAddress: 'Indonesia',
-  instagramUrl: '', tiktokUrl: '', facebookUrl: '', youtubeUrl: ''
+  instagramUrl: '', tiktokUrl: '', facebookUrl: '', youtubeUrl: '',
+  // Default Promo (Empty so it doesn't show)
+  promoLabel: 'LIMITED TIME OFFER',
+  promoTitle: '',
+  promoSubtitle: '',
+  promoEndAt: 0
 };
 
 export const dbService = {

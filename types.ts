@@ -56,7 +56,7 @@ export interface SiteSettings {
   logoUrl: string;
   faviconUrl: string;
   themeColor: string; 
-  themeFont: string; // New: Menyimpan nama tema font (e.g., 'Default', 'Display 1')
+  themeFont: string; 
   heroImage: string;
   heroTitle: string;
   heroSubtitle: string;
@@ -75,6 +75,11 @@ export interface SiteSettings {
   tiktokUrl: string;
   facebookUrl: string;
   youtubeUrl: string;
+  // Promotions Feature
+  promoLabel: string;
+  promoTitle: string;
+  promoSubtitle: string;
+  promoEndAt: number; // Timestamp
 }
 
 export interface AdminCredentials {

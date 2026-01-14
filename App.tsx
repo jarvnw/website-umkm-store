@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useCallback, createContext, useContext, useMemo } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useNavigate, useParams, useLocation } from 'react-router-dom';
-import { Product, CartItem, CSContact, UserInfo, Variation, SiteSettings, Testimonial } from './types';
+// Import Media type from types.ts
+import { Product, CartItem, CSContact, UserInfo, Variation, SiteSettings, Testimonial, Media } from './types';
 import { dbService, DEFAULT_SETTINGS } from './services/dbService';
 import Header from './components/Header';
 import Hero from './components/Hero';
@@ -66,10 +67,82 @@ export const useStore = () => {
   return context;
 };
 
+// --- PROMOTION SECTION ---
+const PromotionSection = ({ settings }: { settings: SiteSettings }) => {
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+
+  useEffect(() => {
+    if (!settings.promoEndAt) return;
+    
+    const calculateTime = () => {
+      const now = Date.now();
+      const diff = settings.promoEndAt - now;
+      if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+      
+      return {
+        days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+        minutes: Math.floor((diff / (1000 * 60)) % 60),
+        seconds: Math.floor((diff / 1000) % 60),
+      };
+    };
+
+    setTimeLeft(calculateTime());
+    const timer = setInterval(() => setTimeLeft(calculateTime()), 1000);
+    return () => clearInterval(timer);
+  }, [settings.promoEndAt]);
+
+  if (!settings.promoTitle) return null;
+
+  return (
+    <section className="px-4 md:px-10 lg:px-40 py-12 flex justify-center">
+      <div className="max-w-[1200px] w-full bg-gradient-to-br from-[#0c1a0c] to-[#050a05] rounded-[40px] p-8 md:p-16 flex flex-col lg:flex-row items-center justify-between gap-12 shadow-2xl relative overflow-hidden border border-white/5">
+        <div className="absolute top-0 right-0 size-64 bg-primary/10 blur-[100px] -translate-y-1/2 translate-x-1/2 rounded-full"></div>
+        <div className="absolute bottom-0 left-0 size-64 bg-primary/5 blur-[100px] translate-y-1/2 -translate-x-1/2 rounded-full"></div>
+        
+        <div className="relative z-10 flex-1 text-center lg:text-left">
+          <span className="inline-block text-primary font-black text-[10px] md:text-xs uppercase tracking-[0.3em] mb-4 drop-shadow-sm">{settings.promoLabel}</span>
+          <h2 className="text-white text-4xl md:text-6xl font-black mb-6 leading-tight tracking-tighter">
+            {settings.promoTitle}
+          </h2>
+          <p className="text-gray-400 text-lg md:text-xl font-medium leading-relaxed max-w-[500px] mx-auto lg:mx-0">
+            {settings.promoSubtitle}
+          </p>
+        </div>
+
+        <div className="relative z-10 flex flex-col items-center gap-10 shrink-0">
+          <div className="grid grid-cols-4 gap-3 md:gap-5">
+            {[
+              { label: 'Days', value: timeLeft.days },
+              { label: 'Hours', value: timeLeft.hours },
+              { label: 'Minutes', value: timeLeft.minutes },
+              { label: 'Seconds', value: timeLeft.seconds }
+            ].map((unit, i) => (
+              <div key={i} className="flex flex-col items-center gap-2">
+                <div className="size-16 md:size-24 bg-white/5 backdrop-blur-md rounded-2xl md:rounded-3xl flex items-center justify-center border border-white/10 shadow-lg">
+                  <span className="text-white text-2xl md:text-5xl font-black tabular-nums">{unit.value.toString().padStart(2, '0')}</span>
+                </div>
+                <span className="text-gray-500 font-black uppercase text-[8px] md:text-[10px] tracking-widest">{unit.label}</span>
+              </div>
+            ))}
+          </div>
+
+          <Link 
+            to="/products"
+            className="w-full md:w-auto px-10 h-16 md:h-20 bg-primary text-[#111811] rounded-[24px] text-lg font-black flex items-center justify-center gap-3 hover:scale-105 transition-transform shadow-2xl shadow-primary/40 active:scale-95"
+          >
+            Claim Offer
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+};
+
 // --- PAGES ---
 
 const HomePage: React.FC = () => {
-  const { products, testimonials } = useStore();
+  const { products, testimonials, siteSettings } = useStore();
   const featured = products.filter(p => p.isFeatured);
   const activeTestimonials = testimonials.filter(t => t.isActive);
 
@@ -97,6 +170,8 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
+      <PromotionSection settings={siteSettings} />
+
       <section className="px-4 md:px-10 lg:px-40 py-20 bg-background-light dark:bg-background-dark/50">
         <div className="max-w-[1200px] mx-auto text-center">
           <h2 className="text-4xl font-black mb-12 tracking-tight">Why Choose Us</h2>
@@ -117,7 +192,6 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Testimonials Section */}
       {activeTestimonials.length > 0 && (
         <section className="px-4 md:px-10 lg:px-40 py-24">
           <div className="max-w-[1200px] mx-auto">
@@ -151,128 +225,96 @@ const HomePage: React.FC = () => {
   );
 };
 
-const ProductDetailPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const { products, addToCart } = useStore();
-  const product = products.find(p => p.id === id);
-  const [selectedVar, setSelectedVar] = useState<Variation | null>(null);
-  const [activeMedia, setActiveMedia] = useState<number>(0);
-
-  useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    if (product && product.variations?.length > 0) {
-      setSelectedVar(product.variations[0]);
-    }
-  }, [product, id]);
-
-  const handleBack = () => {
-    if (window.history.length > 1) {
-      navigate(-1);
-    } else {
-      navigate('/products');
-    }
-  };
-
-  if (!product) return <div className="p-20 text-center font-bold">Product not found.</div>;
-
-  const allMedia = [product.coverMedia, ...(product.gallery || [])].filter(m => m && m.url);
+const ProductsPage: React.FC = () => {
+  const { products } = useStore();
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const categories = ['All', ...new Set(products.map(p => p.category))];
+  const filtered = selectedCategory === 'All' ? products : products.filter(p => p.category === selectedCategory);
 
   return (
-    <div className="px-4 md:px-10 lg:px-40 py-4 md:py-12 flex justify-center animate-in fade-in duration-700">
-      <div className="max-w-[1200px] w-full flex flex-col gap-4 md:gap-8">
-        
-        <div className="flex items-center">
-          <button 
-            onClick={handleBack}
-            className="group flex items-center gap-2 text-[#111811] dark:text-white transition-all font-black text-[10px] md:text-xs uppercase tracking-[0.2em] bg-white/80 dark:bg-[#1a2e1a]/80 backdrop-blur-md px-4 py-2.5 md:px-6 md:py-3.5 rounded-full shadow-lg border border-gray-200 dark:border-gray-800 hover:text-primary hover:border-primary active:scale-95"
-          >
-            <span className="material-symbols-outlined text-lg md:text-xl transition-transform group-hover:-translate-x-1">arrow_back</span>
-            Kembali
-          </button>
+    <div className="px-4 md:px-10 lg:px-40 py-20 flex justify-center flex-col items-center">
+      <div className="max-w-[1200px] w-full">
+        <h1 className="text-4xl font-black mb-8">Semua Produk</h1>
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-6">
+          {categories.map(cat => (
+            <button 
+              key={cat} 
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest whitespace-nowrap transition-all ${selectedCategory === cat ? 'bg-primary text-black' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200'}`}
+            >
+              {cat}
+            </button>
+          ))}
         </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 py-4">
+          {filtered.map(product => <ProductCard key={product.id} product={product} />)}
+        </div>
+      </div>
+    </div>
+  );
+};
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-16 items-start">
-          <div className="flex flex-col gap-4">
-            <div className="rounded-[32px] md:rounded-[48px] overflow-hidden aspect-square bg-white dark:bg-black/20 relative border border-gray-100 dark:border-gray-800 shadow-2xl group">
-              {allMedia[activeMedia]?.type === 'video' ? (
-                <video src={allMedia[activeMedia].url} className="w-full h-full object-cover" controls autoPlay loop muted />
-              ) : (
-                <img src={allMedia[activeMedia]?.url || product.image} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-              )}
-            </div>
-            {allMedia.length > 1 && (
-              <div className="grid grid-cols-5 gap-3 md:gap-4 px-2">
-                {allMedia.map((m, i) => (
-                  <button 
-                    key={i} 
-                    onClick={() => setActiveMedia(i)}
-                    className={`aspect-square rounded-2xl overflow-hidden border-2 transition-all shadow-sm ${activeMedia === i ? 'border-primary ring-4 ring-primary/10' : 'border-transparent opacity-60 hover:opacity-100'}`}
-                  >
-                    {m.type === 'video' ? (
-                      <div className="w-full h-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center">
-                        <span className="material-symbols-outlined text-primary">play_circle</span>
-                      </div>
-                    ) : (
-                      <img src={m.url} className="w-full h-full object-cover" />
-                    )}
-                  </button>
-                ))}
-              </div>
+const ProductDetailPage: React.FC = () => {
+  const { id } = useParams();
+  const { products, addToCart } = useStore();
+  const [selectedVariation, setSelectedVariation] = useState<Variation | null>(null);
+  // Using imported Media type
+  const [activeMedia, setActiveMedia] = useState<Media | null>(null);
+  const product = products.find(p => p.id === id);
+
+  useEffect(() => {
+    if (product) {
+      setSelectedVariation(product.variations[0] || null);
+      setActiveMedia(product.coverMedia);
+    }
+  }, [product]);
+
+  if (!product) return <div className="p-20 text-center font-bold">Produk tidak ditemukan.</div>;
+  const currentPrice = selectedVariation ? selectedVariation.price : product.price;
+
+  return (
+    <div className="px-4 md:px-10 lg:px-40 py-20 flex justify-center">
+      <div className="max-w-[1200px] w-full grid grid-cols-1 lg:grid-cols-2 gap-16">
+        <div className="flex flex-col gap-4">
+          <div className="aspect-square rounded-[32px] overflow-hidden bg-gray-50 dark:bg-black/20 border border-gray-100 dark:border-gray-800">
+            {activeMedia?.type === 'video' ? (
+              <video src={activeMedia.url} className="w-full h-full object-cover" autoPlay loop muted playsInline />
+            ) : (
+              <img src={activeMedia?.url || product.image} className="w-full h-full object-cover" />
             )}
           </div>
-
-          <div className="flex flex-col">
-            <div className="mb-6 md:mb-10">
-              <span className="inline-block px-3 py-1 bg-primary/10 text-primary font-black text-[9px] md:text-[10px] tracking-[0.2em] uppercase rounded-full mb-3 md:mb-4">
-                {product.category}
-              </span>
-              <h1 className="text-3xl md:text-6xl font-black mb-3 leading-tight tracking-tight text-[#111811] dark:text-white">
-                {product.name}
-              </h1>
-              <p className="text-2xl md:text-4xl font-black text-primary">
-                Rp {(selectedVar?.price || product.price).toLocaleString('id-ID')}
-              </p>
+          <div className="flex gap-3 overflow-x-auto no-scrollbar">
+            {[product.coverMedia, ...product.gallery].map((m, i) => (
+              <button key={i} onClick={() => setActiveMedia(m)} className={`size-20 shrink-0 rounded-2xl overflow-hidden border-2 transition-all ${activeMedia?.url === m.url ? 'border-primary' : 'border-transparent'}`}>
+                {m.type === 'video' ? (
+                   <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800"><span className="material-symbols-outlined text-primary">play_circle</span></div>
+                ) : (
+                   <img src={m.url} className="w-full h-full object-cover" />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-xs font-black text-primary uppercase tracking-[0.3em] mb-4">{product.category}</span>
+          <h1 className="text-4xl font-black mb-6 leading-tight">{product.name}</h1>
+          <p className="text-3xl font-black text-primary mb-8">Rp {currentPrice.toLocaleString('id-ID')}</p>
+          <div className="mb-10">
+            <h4 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-4">Pilih Variasi</h4>
+            <div className="flex flex-wrap gap-3">
+              {product.variations.map(v => (
+                <button key={v.id} onClick={() => setSelectedVariation(v)} className={`px-6 py-3 rounded-2xl border-2 font-bold transition-all ${selectedVariation?.id === v.id ? 'border-primary bg-primary/5 text-primary' : 'border-gray-100 dark:border-gray-800 hover:border-gray-300'}`}>
+                  {v.name}
+                </button>
+              ))}
             </div>
-
-            <div className="bg-white dark:bg-[#1a2e1a] p-6 md:p-8 rounded-[28px] md:rounded-[32px] border border-gray-100 dark:border-gray-800 mb-6 md:mb-8 shadow-sm">
-              <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 md:mb-4 flex items-center gap-2">
-                <span className="material-symbols-outlined text-sm font-black">description</span> Detail Produk
-              </h4>
-              <p className="text-gray-600 dark:text-gray-400 leading-relaxed text-base md:text-lg whitespace-pre-line font-medium">
-                {product.description}
-              </p>
-            </div>
-
-            {product.variations?.length > 0 && (
-              <div className="mb-8 md:mb-10">
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 md:mb-4 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-sm font-black">settings_input_component</span> Pilih Variasi
-                </h4>
-                <div className="flex flex-wrap gap-2.5 md:gap-3">
-                  {product.variations.map(v => (
-                    <button 
-                      key={v.id}
-                      onClick={() => setSelectedVar(v)}
-                      className={`px-5 py-3 md:px-6 md:py-3.5 rounded-2xl font-bold border-2 transition-all flex flex-col gap-0.5 ${selectedVar?.id === v.id ? 'border-primary bg-primary text-black shadow-lg shadow-primary/20' : 'border-gray-100 dark:border-gray-800 text-gray-500 hover:border-primary/50'}`}
-                    >
-                      <span className="text-sm font-black">{v.name}</span>
-                      {v.stock <= 5 && v.stock > 0 && <span className="text-[8px] uppercase font-black opacity-70">Sisa {v.stock}</span>}
-                      {v.stock === 0 && <span className="text-[8px] uppercase font-black opacity-70">Stok Habis</span>}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <button 
-              onClick={() => addToCart(product, selectedVar || undefined)}
-              disabled={selectedVar && selectedVar.stock <= 0}
-              className="flex items-center justify-center gap-3 md:gap-4 bg-primary text-[#111811] h-14 md:h-20 rounded-[24px] text-lg md:text-xl font-black hover:scale-[1.02] transition-all shadow-2xl shadow-primary/30 disabled:opacity-50 disabled:scale-100 disabled:grayscale"
-            >
-              <span className="material-symbols-outlined font-black">add_shopping_cart</span>
-              Tambah ke Keranjang
-            </button>
+          </div>
+          <button onClick={() => addToCart(product, selectedVariation || undefined)} className="w-full h-16 bg-primary text-black rounded-2xl font-black text-lg flex items-center justify-center gap-3 hover:scale-[1.02] transition-transform shadow-xl shadow-primary/20">
+            <span className="material-symbols-outlined font-black">add_shopping_cart</span> Tambah ke Keranjang
+          </button>
+          <div className="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800">
+            <h4 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-4">Deskripsi Produk</h4>
+            <p className="text-gray-500 dark:text-gray-400 leading-relaxed font-medium whitespace-pre-line">{product.description}</p>
           </div>
         </div>
       </div>
@@ -283,293 +325,103 @@ const ProductDetailPage: React.FC = () => {
 const AboutPage: React.FC = () => {
   const { siteSettings } = useStore();
   return (
-    <div className="flex flex-col items-center">
-      <section className="w-full bg-primary/10 py-32 px-4 md:px-10 lg:px-40 flex justify-center text-center">
-        <div className="max-w-[800px]">
-          <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter">{siteSettings.aboutHeaderTitle}</h1>
-          <p className="text-xl text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-line font-medium">
-            {siteSettings.aboutHeaderDesc}
-          </p>
-        </div>
-      </section>
-      <section className="max-w-[1200px] w-full px-4 md:px-10 lg:px-40 py-24 grid grid-cols-1 md:grid-cols-2 gap-20 items-center">
-        <div><img src={siteSettings.aboutSectionImage} className="rounded-3xl shadow-2xl w-full object-cover aspect-video md:aspect-square" alt="About Section" /></div>
-        <div className="flex flex-col gap-6">
-          <h2 className="text-4xl font-black tracking-tight">{siteSettings.aboutSectionTitle}</h2>
-          <p className="text-gray-600 dark:text-gray-400 leading-relaxed text-lg whitespace-pre-line font-medium">{siteSettings.aboutSectionDesc}</p>
-        </div>
-      </section>
+    <div className="flex flex-col">
+       <section className="bg-gray-50 dark:bg-black/20 py-32 px-4 md:px-10 lg:px-40 text-center">
+          <h1 className="text-5xl font-black mb-6 tracking-tight">{siteSettings.aboutHeaderTitle}</h1>
+          <p className="max-w-[700px] mx-auto text-gray-500 font-medium text-lg leading-relaxed">{siteSettings.aboutHeaderDesc}</p>
+       </section>
+       <section className="py-32 px-4 md:px-10 lg:px-40 flex justify-center">
+          <div className="max-w-[1200px] w-full grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+             <img src={siteSettings.aboutSectionImage} className="rounded-[40px] shadow-2xl" />
+             <div>
+                <h2 className="text-4xl font-black mb-8 leading-tight">{siteSettings.aboutSectionTitle}</h2>
+                <p className="text-gray-500 font-medium leading-relaxed text-lg whitespace-pre-line">{siteSettings.aboutSectionDesc}</p>
+             </div>
+          </div>
+       </section>
     </div>
   );
 };
 
 const ContactPage: React.FC = () => {
-  const { siteSettings } = useStore();
-
+  const { siteSettings, csContacts } = useStore();
   return (
     <div className="px-4 md:px-10 lg:px-40 py-24 flex justify-center">
-      <div className="max-w-[1000px] w-full text-center">
-        <h1 className="text-5xl md:text-7xl font-black mb-8 tracking-tighter">Get in Touch</h1>
-        <p className="text-xl text-gray-500 dark:text-gray-400 mb-16 max-w-[700px] mx-auto font-medium">
-          We're here to help! Connect with us through any of these platforms or visit us at our office.
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20">
-           <div className="bg-white dark:bg-[#1a2e1a] p-10 rounded-[40px] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl transition-all">
-              <div className="size-16 rounded-3xl bg-primary/10 flex items-center justify-center text-primary mx-auto mb-6">
-                <span className="material-symbols-outlined text-4xl font-black">call</span>
-              </div>
-              <h4 className="font-black text-xl mb-2">Phone</h4>
-              <p className="text-gray-500 font-bold">{siteSettings.contactPhone}</p>
-           </div>
-           
-           <div className="bg-white dark:bg-[#1a2e1a] p-10 rounded-[40px] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl transition-all">
-              <div className="size-16 rounded-3xl bg-primary/10 flex items-center justify-center text-primary mx-auto mb-6">
-                <span className="material-symbols-outlined text-4xl font-black">mail</span>
-              </div>
-              <h4 className="font-black text-xl mb-2">Email</h4>
-              <p className="text-gray-500 font-bold">{siteSettings.contactEmail}</p>
-           </div>
-
-           <div className="bg-white dark:bg-[#1a2e1a] p-10 rounded-[40px] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl transition-all">
-              <div className="size-16 rounded-3xl bg-primary/10 flex items-center justify-center text-primary mx-auto mb-6">
-                <span className="material-symbols-outlined text-4xl font-black">location_on</span>
-              </div>
-              <h4 className="font-black text-xl mb-2">Address</h4>
-              <p className="text-gray-500 font-bold">{siteSettings.contactAddress}</p>
-           </div>
-        </div>
-
-        <div className="flex flex-col items-center gap-8">
-          <h3 className="font-black tracking-tight uppercase tracking-widest text-xs text-primary">Find Us on Social Media</h3>
-          <div className="flex flex-wrap justify-center gap-6">
-            {siteSettings.instagramUrl && (
-              <a href={siteSettings.instagramUrl} target="_blank" rel="noopener noreferrer" className="size-14 rounded-2xl bg-white dark:bg-[#1a2e1a] border border-gray-100 dark:border-gray-800 flex items-center justify-center hover:scale-110 transition-transform shadow-sm">
-                <img src="https://cdn-icons-png.flaticon.com/512/174/174855.png" className="size-6 grayscale hover:grayscale-0 transition-all" alt="Instagram" />
-              </a>
-            )}
-            {siteSettings.tiktokUrl && (
-              <a href={siteSettings.tiktokUrl} target="_blank" rel="noopener noreferrer" className="size-14 rounded-2xl bg-white dark:bg-[#1a2e1a] border border-gray-100 dark:border-gray-800 flex items-center justify-center hover:scale-110 transition-transform shadow-sm">
-                <img src="https://cdn-icons-png.flaticon.com/512/3046/3046121.png" className="size-6 grayscale hover:grayscale-0 transition-all" alt="TikTok" />
-              </a>
-            )}
-            {siteSettings.facebookUrl && (
-              <a href={siteSettings.facebookUrl} target="_blank" rel="noopener noreferrer" className="size-14 rounded-2xl bg-white dark:bg-[#1a2e1a] border border-gray-100 dark:border-gray-800 flex items-center justify-center hover:scale-110 transition-transform shadow-sm">
-                <img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" className="size-6 grayscale hover:grayscale-0 transition-all" alt="Facebook" />
-              </a>
-            )}
-            {siteSettings.youtubeUrl && (
-              <a href={siteSettings.youtubeUrl} target="_blank" rel="noopener noreferrer" className="size-14 rounded-2xl bg-white dark:bg-[#1a2e1a] border border-gray-100 dark:border-gray-800 flex items-center justify-center hover:scale-110 transition-transform shadow-sm">
-                <img src="https://cdn-icons-png.flaticon.com/512/1384/1384060.png" className="size-6 grayscale hover:grayscale-0 transition-all" alt="YouTube" />
-              </a>
-            )}
+       <div className="max-w-[1000px] w-full">
+          <div className="text-center mb-20">
+             <h1 className="text-5xl font-black mb-6">Hubungi Kami</h1>
+             <p className="text-gray-500 font-medium">Kami siap membantu Anda kapan saja.</p>
           </div>
-        </div>
-      </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+             <div className="bg-white dark:bg-[#1a2e1a] p-10 rounded-[40px] border border-gray-100 dark:border-gray-800 shadow-sm">
+                <h3 className="text-xl font-black mb-8">Informasi Kontak</h3>
+                <div className="flex flex-col gap-6">
+                   <div className="flex items-center gap-4">
+                      <div className="size-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary"><span className="material-symbols-outlined">mail</span></div>
+                      <div><p className="text-xs text-gray-400 font-black uppercase tracking-widest">Email</p><p className="font-bold">{siteSettings.contactEmail}</p></div>
+                   </div>
+                   <div className="flex items-center gap-4">
+                      <div className="size-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary"><span className="material-symbols-outlined">call</span></div>
+                      <div><p className="text-xs text-gray-400 font-black uppercase tracking-widest">WhatsApp</p><p className="font-bold">+{siteSettings.contactPhone}</p></div>
+                   </div>
+                   <div className="flex items-center gap-4">
+                      <div className="size-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary"><span className="material-symbols-outlined">location_on</span></div>
+                      <div><p className="text-xs text-gray-400 font-black uppercase tracking-widest">Alamat</p><p className="font-bold">{siteSettings.contactAddress}</p></div>
+                   </div>
+                </div>
+             </div>
+             <div className="flex flex-col gap-6">
+                <h3 className="text-xl font-black mb-2">CS Online</h3>
+                <div className="flex flex-col gap-4">
+                   {csContacts.filter(c => c.isActive).map(cs => (
+                      <a key={cs.id} href={`https://wa.me/${cs.phoneNumber}`} target="_blank" rel="noreferrer" className="flex items-center justify-between p-6 bg-primary text-black rounded-3xl font-black hover:scale-[1.02] transition-transform">
+                         <div className="flex items-center gap-4">
+                            <span className="material-symbols-outlined">chat</span>
+                            <span>{cs.name}</span>
+                         </div>
+                         <span className="text-xs uppercase tracking-widest">Chat Now</span>
+                      </a>
+                   ))}
+                </div>
+             </div>
+          </div>
+       </div>
     </div>
   );
 };
 
-const ProductsPage: React.FC = () => {
-  const { products } = useStore();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  const [minPrice, setMinPrice] = useState<string>('');
-  const [maxPrice, setMaxPrice] = useState<string>('');
-  const [sortBy, setSortBy] = useState<'newest' | 'price-low' | 'price-high'>('newest');
-
-  const categories = useMemo(() => {
-    const cats = products.map(p => p.category);
-    return ['All', ...Array.from(new Set(cats))];
-  }, [products]);
-
-  const filtered = useMemo(() => {
-    let result = products.filter(p => {
-      const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          p.category.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchCategory = selectedCategory === 'All' || p.category === selectedCategory;
-      const matchMinPrice = minPrice === '' || p.price >= Number(minPrice);
-      const matchMaxPrice = maxPrice === '' || p.price <= Number(maxPrice);
-      
-      return matchSearch && matchCategory && matchMinPrice && matchMaxPrice;
-    });
-
-    if (sortBy === 'price-low') result.sort((a, b) => a.price - b.price);
-    if (sortBy === 'price-high') result.sort((a, b) => b.price - a.price);
-    if (sortBy === 'newest') result.sort((a, b) => b.createdAt - a.createdAt);
-
-    return result;
-  }, [products, searchTerm, selectedCategory, minPrice, maxPrice, sortBy]);
-
-  return (
-    <div className="px-4 md:px-10 lg:px-40 py-20 font-body">
-      <div className="max-w-[1200px] mx-auto">
-        <div className="flex flex-col gap-10 mb-16">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <h1 className="text-4xl font-black uppercase tracking-tighter">Collections</h1>
-            <div className="relative w-full md:w-96 group">
-              <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors font-black">search</span>
-              <input 
-                value={searchTerm} 
-                onChange={e => setSearchTerm(e.target.value)} 
-                placeholder="Search products..." 
-                className="w-full pl-14 pr-6 h-14 bg-white dark:bg-[#1a2e1a] border border-gray-200 dark:border-gray-800 rounded-2xl outline-none focus:border-primary transition-all font-black" 
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-6 p-8 bg-white dark:bg-[#1a2e1a] rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm">
-            <div className="flex flex-wrap items-center gap-4">
-              <span className="text-xs font-black uppercase tracking-widest text-gray-400 mr-2">Category:</span>
-              {categories.map(cat => (
-                <button 
-                  key={cat} 
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest transition-all border-2 ${selectedCategory === cat ? 'bg-primary border-primary text-black' : 'border-gray-100 dark:border-gray-800 hover:border-primary text-gray-500'}`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-gray-50 dark:border-gray-800">
-               <div className="flex flex-col gap-2">
-                 <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Sort By</label>
-                 <select 
-                    className="h-12 rounded-xl bg-gray-50 dark:bg-black/20 border-none outline-none font-black text-sm px-4 cursor-pointer"
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as any)}
-                 >
-                   <option value="newest">Latest Products</option>
-                   <option value="price-low">Price: Low to High</option>
-                   <option value="price-high">Price: High to Low</option>
-                 </select>
-               </div>
-               
-               <div className="flex flex-col gap-2">
-                 <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Min Price (Rp)</label>
-                 <input 
-                    type="number" 
-                    placeholder="0" 
-                    className="h-12 rounded-xl bg-gray-50 dark:bg-black/20 border-none outline-none font-black text-sm px-4" 
-                    value={minPrice}
-                    onChange={(e) => setMinPrice(e.target.value)}
-                 />
-               </div>
-
-               <div className="flex flex-col gap-2">
-                 <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Max Price (Rp)</label>
-                 <input 
-                    type="number" 
-                    placeholder="Unlimited" 
-                    className="h-12 rounded-xl bg-gray-50 dark:bg-black/20 border-none outline-none font-black text-sm px-4" 
-                    value={maxPrice}
-                    onChange={(e) => setMaxPrice(e.target.value)}
-                 />
-               </div>
-            </div>
-          </div>
-        </div>
-
-        {filtered.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {filtered.map(product => <ProductCard key={product.id} product={product} />)}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-40 gap-4 text-gray-400">
-            <span className="material-symbols-outlined text-6xl font-black">search_off</span>
-            <p className="font-black text-xl">No products found matching your criteria.</p>
-            <button 
-              onClick={() => { setSearchTerm(''); setSelectedCategory('All'); setMinPrice(''); setMaxPrice(''); }}
-              className="text-primary font-black uppercase tracking-widest text-xs hover:underline"
-            >
-              Reset Filters
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const App: React.FC = () => {
+const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [csContacts, setCSContacts] = useState<CSContact[]>([]);
+  const [csContacts, setCsContacts] = useState<CSContact[]>([]);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    try {
-      const [p, c, s, t] = await Promise.all([
-        dbService.getProducts(), 
-        dbService.getCSContacts(),
-        dbService.getSiteSettings(),
-        dbService.getTestimonials()
-      ]);
-      setProducts(p || []);
-      setCSContacts(c || []);
-      if (s) setSiteSettings(s);
-      setTestimonials(t || []);
-    } catch (e) {
-      console.error("Gagal memuat data:", e);
-    }
+  const refreshData = useCallback(async () => {
+    const [p, cs, t, s] = await Promise.all([
+      dbService.getProducts(),
+      dbService.getCSContacts(),
+      dbService.getTestimonials(),
+      dbService.getSiteSettings()
+    ]);
+    setProducts(p);
+    setCsContacts(cs);
+    setTestimonials(t);
+    setSiteSettings(s);
   }, []);
 
   useEffect(() => {
-    fetchData();
+    refreshData();
     const savedCart = localStorage.getItem('lumina_cart');
     if (savedCart) {
       try {
         setCart(JSON.parse(savedCart));
       } catch (e) {
-        localStorage.removeItem('lumina_cart');
+        setCart([]);
       }
     }
-  }, [fetchData]);
-
-  // Efek untuk update Tema Warna secara dinamis
-  useEffect(() => {
-    const themeName = siteSettings.themeColor || 'Green';
-    const hex = THEME_COLORS[themeName] || THEME_COLORS['Green'];
-    document.documentElement.style.setProperty('--primary', hex);
-  }, [siteSettings.themeColor]);
-
-  // Efek untuk update Tema Font secara dinamis
-  useEffect(() => {
-    const fontThemeName = siteSettings.themeFont || 'Default';
-    const fonts = FONT_THEMES[fontThemeName] || FONT_THEMES['Default'];
-    document.documentElement.style.setProperty('--font-heading', fonts.heading);
-    document.documentElement.style.setProperty('--font-body', fonts.body);
-  }, [siteSettings.themeFont]);
-
-  // Efek untuk update Favicon secara dinamis
-  useEffect(() => {
-    if (siteSettings.faviconUrl) {
-      let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
-      if (!link) {
-        link = document.createElement('link');
-        link.rel = 'icon';
-        document.getElementsByTagName('head')[0].appendChild(link);
-      }
-      link.href = siteSettings.faviconUrl;
-    }
-  }, [siteSettings.faviconUrl]);
-
-  // Efek untuk update Judul Website & Meta SEO secara dinamis
-  useEffect(() => {
-    if (siteSettings.siteName) {
-      const fullTitle = `${siteSettings.siteName} | Pilihan Terbaik & Terpercaya`;
-      document.title = fullTitle;
-      
-      const metaTitle = document.querySelector('meta[name="title"]');
-      if (metaTitle) metaTitle.setAttribute('content', fullTitle);
-      
-      const ogTitle = document.querySelector('meta[property="og:title"]');
-      if (ogTitle) ogTitle.setAttribute('content', fullTitle);
-    }
-  }, [siteSettings.siteName]);
+  }, [refreshData]);
 
   useEffect(() => {
     localStorage.setItem('lumina_cart', JSON.stringify(cart));
@@ -579,9 +431,12 @@ const App: React.FC = () => {
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id && item.selectedVariation?.id === variation?.id);
       if (existing) {
-        return prev.map(item => (item.id === product.id && item.selectedVariation?.id === variation?.id) ? { ...item, quantity: item.quantity + 1 } : item);
+        return prev.map(item => (item.id === product.id && item.selectedVariation?.id === variation?.id) 
+          ? { ...item, quantity: item.quantity + 1 } 
+          : item
+        );
       }
-      return [...prev, { ...product, selectedVariation: variation, quantity: 1 }];
+      return [...prev, { ...product, quantity: 1, selectedVariation: variation }];
     });
     setIsCartOpen(true);
   };
@@ -591,40 +446,84 @@ const App: React.FC = () => {
   };
 
   const updateCartQuantity = (productId: string, variationId: string, quantity: number) => {
-    if (quantity < 1) return removeFromCart(productId, variationId);
+    if (quantity < 1) {
+      removeFromCart(productId, variationId);
+      return;
+    }
     setCart(prev => prev.map(item => (item.id === productId && item.selectedVariation?.id === variationId) ? { ...item, quantity } : item));
   };
 
   const clearCart = () => setCart([]);
 
+  const value = {
+    products, cart, addToCart, removeFromCart, updateCartQuantity, clearCart,
+    csContacts, testimonials, siteSettings, refreshData, isCartOpen, setIsCartOpen
+  };
+
+  return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
+};
+
+const App: React.FC = () => {
   return (
-    <StoreContext.Provider value={{ 
-      products, cart, addToCart, removeFromCart, updateCartQuantity, 
-      clearCart, csContacts, testimonials, siteSettings, refreshData: fetchData, isCartOpen, setIsCartOpen 
-    }}>
+    <StoreProvider>
       <Router>
         <ScrollToTop />
-        <div className="min-h-screen flex flex-col font-body">
-          <Header onCartOpen={() => setIsCartOpen(true)} cartCount={cart.reduce((acc, item) => acc + item.quantity, 0)} />
-          <main className="flex-1">
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/products" element={<ProductsPage />} />
-              <Route path="/product/:id" element={<ProductDetailPage />} />
-              <Route path="/about" element={<AboutPage />} />
-              <Route path="/contact" element={<ContactPage />} />
-              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-              <Route path="/terms-of-service" element={<TermsOfService />} />
-              <Route path="/admin/login" element={<AdminLogin />} />
-              <Route path="/admin/*" element={<AdminDashboard />} />
-            </Routes>
-          </main>
-          <Footer />
-          <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
-        </div>
+        <StoreContext.Consumer>
+          {store => {
+            const themeColor = store?.siteSettings.themeColor ? (THEME_COLORS[store.siteSettings.themeColor] || THEME_COLORS['Green']) : THEME_COLORS['Green'];
+            const fontTheme = store?.siteSettings.themeFont ? (FONT_THEMES[store.siteSettings.themeFont] || FONT_THEMES['Default']) : FONT_THEMES['Default'];
+            
+            return (
+              <div 
+                className="min-h-screen flex flex-col bg-background-light dark:bg-background-dark text-[#111811] dark:text-white transition-colors"
+                style={{
+                  // @ts-ignore
+                  '--primary-color': themeColor,
+                  '--font-heading': fontTheme.heading,
+                  '--font-body': fontTheme.body,
+                } as React.CSSProperties}
+              >
+                <style>{`
+                  :root { 
+                    --primary: ${themeColor};
+                  }
+                  .text-primary { color: var(--primary); }
+                  .bg-primary { background-color: var(--primary); }
+                  .border-primary { border-color: var(--primary); }
+                  .shadow-primary\\/20 { --tw-shadow-color: rgba(${hexToRgb(themeColor)}, 0.2); }
+                  .shadow-primary\\/30 { --tw-shadow-color: rgba(${hexToRgb(themeColor)}, 0.3); }
+                  .shadow-primary\\/40 { --tw-shadow-color: rgba(${hexToRgb(themeColor)}, 0.4); }
+                  body { font-family: var(--font-body), sans-serif; }
+                  h1, h2, h3, h4, h5, h6 { font-family: var(--font-heading), sans-serif; }
+                `}</style>
+                <Header onCartOpen={() => store?.setIsCartOpen(true)} cartCount={store?.cart.reduce((a, b) => a + b.quantity, 0) || 0} />
+                <main className="flex-1 flex flex-col">
+                  <Routes>
+                    <Route path="/" element={<HomePage />} />
+                    <Route path="/products" element={<ProductsPage />} />
+                    <Route path="/product/:id" element={<ProductDetailPage />} />
+                    <Route path="/about" element={<AboutPage />} />
+                    <Route path="/contact" element={<ContactPage />} />
+                    <Route path="/admin/login" element={<AdminLogin />} />
+                    <Route path="/admin" element={<AdminDashboard />} />
+                    <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                    <Route path="/terms-of-service" element={<TermsOfService />} />
+                  </Routes>
+                </main>
+                <Footer />
+                <CartSidebar isOpen={!!store?.isCartOpen} onClose={() => store?.setIsCartOpen(false)} />
+              </div>
+            );
+          }}
+        </StoreContext.Consumer>
       </Router>
-    </StoreContext.Provider>
+    </StoreProvider>
   );
 };
+
+function hexToRgb(hex: string) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '0, 255, 0';
+}
 
 export default App;
