@@ -300,9 +300,12 @@ const AdminDashboard: React.FC = () => {
             {testimonials.map(t => (
               <div key={t.id} className="relative aspect-[3/4] rounded-[32px] border border-gray-100 dark:border-gray-800 overflow-hidden group shadow-sm">
                 <img src={t.imageUrl} className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4 backdrop-blur-sm">
-                   <button onClick={() => { setEditingTestimonial(t); setIsModalOpen(true); }} className="size-12 bg-white text-black rounded-full flex items-center justify-center shadow-lg"><span className="material-symbols-outlined">edit</span></button>
-                   <button onClick={() => { if(confirm('Hapus testimoni?')) dbService.deleteTestimonial(t.id).then(refreshData) }} className="size-12 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg"><span className="material-symbols-outlined">delete</span></button>
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3 backdrop-blur-sm p-4 text-center">
+                   <p className="text-white text-[10px] font-black uppercase tracking-widest">{t.customerName}</p>
+                   <div className="flex gap-4">
+                      <button onClick={() => { setEditingTestimonial(t); setIsModalOpen(true); }} className="size-12 bg-white text-black rounded-full flex items-center justify-center shadow-lg"><span className="material-symbols-outlined">edit</span></button>
+                      <button onClick={() => { if(confirm('Hapus testimoni?')) dbService.deleteTestimonial(t.id).then(refreshData) }} className="size-12 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg"><span className="material-symbols-outlined">delete</span></button>
+                   </div>
                 </div>
               </div>
             ))}
@@ -478,6 +481,7 @@ const AdminDashboard: React.FC = () => {
                     </div>
                  </div>
                  <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2 tracking-widest">Identitas Pelanggan</label><input placeholder="Kak Andi - Surabaya" className="h-16 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 focus:border-primary outline-none font-bold" value={editingTestimonial?.customerName || ''} onChange={e => setEditingTestimonial({ ...editingTestimonial, customerName: e.target.value })} /></div>
+                 <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2 tracking-widest">Review Singkat</label><textarea placeholder="Produknya sangat bagus, pengiriman cepat!" className="h-32 border-2 rounded-2xl p-6 bg-gray-50 dark:bg-black/20 focus:border-primary outline-none font-bold resize-none" value={editingTestimonial?.description || ''} onChange={e => setEditingTestimonial({ ...editingTestimonial, description: e.target.value })} /></div>
                  <button disabled={isSaving} className="h-16 bg-primary text-[#111811] rounded-2xl font-black text-xl shadow-xl shadow-primary/20 disabled:opacity-50">
                     {isSaving ? 'Menyimpan...' : 'SIMPAN REVIEW'}
                  </button>

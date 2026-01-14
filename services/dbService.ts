@@ -157,6 +157,7 @@ export const dbService = {
         id: r.id,
         imageUrl: r.image_url,
         customerName: r.customer_name,
+        description: r.description,
         isActive: Boolean(r.is_active)
       }));
       localStorage.setItem(TESTIMONIALS_KEY, JSON.stringify(formatted));
@@ -167,17 +168,31 @@ export const dbService = {
   },
 
   async saveTestimonial(t: Testimonial): Promise<void> {
+    const local = JSON.parse(localStorage.getItem(TESTIMONIALS_KEY) || '[]');
+    const idx = local.findIndex((item: any) => item.id === t.id);
+    if (idx >= 0) local[idx] = t; else local.push(t);
+    localStorage.setItem(TESTIMONIALS_KEY, JSON.stringify(local));
+
     if (!sql) return;
     const testimonialId = t.id || `testi_${Date.now()}`;
-    await sql`
-      INSERT INTO testimonials (id, image_url, customer_name, is_active)
-      VALUES (${testimonialId}, ${t.imageUrl}, ${t.customerName || ''}, ${t.isActive})
-      ON CONFLICT (id) DO UPDATE SET
-        image_url = EXCLUDED.image_url, customer_name = EXCLUDED.customer_name, is_active = EXCLUDED.is_active;
-    `;
+    try {
+      await sql`
+        INSERT INTO testimonials (id, image_url, customer_name, description, is_active)
+        VALUES (${testimonialId}, ${t.imageUrl}, ${t.customerName || ''}, ${t.description || ''}, ${t.isActive})
+        ON CONFLICT (id) DO UPDATE SET
+          image_url = EXCLUDED.image_url, customer_name = EXCLUDED.customer_name, description = EXCLUDED.description, is_active = EXCLUDED.is_active;
+      `;
+    } catch (e) {
+      console.error("Neon SaveTestimonial Error:", e);
+    }
   },
 
   async deleteTestimonial(id: string): Promise<void> {
+    const local = localStorage.getItem(TESTIMONIALS_KEY);
+    if (local) {
+      const filtered = JSON.parse(local).filter((t: any) => t.id !== id);
+      localStorage.setItem(TESTIMONIALS_KEY, JSON.stringify(filtered));
+    }
     if (sql) await sql`DELETE FROM testimonials WHERE id = ${id}`;
   },
 

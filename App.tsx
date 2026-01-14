@@ -108,11 +108,18 @@ const HomePage: React.FC = () => {
               {activeTestimonials.map((t) => (
                 <div key={t.id} className="break-inside-avoid bg-white dark:bg-[#1a2e1a] rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-1">
                   <img src={t.imageUrl} alt="Customer Review" className="w-full h-auto object-cover" loading="lazy" />
-                  {t.customerName && (
-                    <div className="p-4 border-t border-gray-50 dark:border-gray-800">
-                      <p className="font-black text-sm text-primary uppercase tracking-widest text-center">{t.customerName}</p>
-                    </div>
-                  )}
+                  <div className="p-6 border-t border-gray-50 dark:border-gray-800 flex flex-col gap-3">
+                    {t.description && (
+                      <p className="text-gray-600 dark:text-gray-400 text-sm italic leading-relaxed text-center">
+                        "{t.description}"
+                      </p>
+                    )}
+                    {t.customerName && (
+                      <p className="font-black text-[10px] text-primary uppercase tracking-[0.2em] text-center border-t border-gray-100 dark:border-gray-800 pt-3">
+                        {t.customerName}
+                      </p>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

@@ -41,6 +41,7 @@ export interface Testimonial {
   id: string;
   imageUrl: string;
   customerName?: string;
+  description?: string;
   isActive: boolean;
 }
 
