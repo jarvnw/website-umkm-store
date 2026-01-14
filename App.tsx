@@ -302,7 +302,6 @@ const ProductsPage: React.FC = () => {
   const [maxPrice, setMaxPrice] = useState<string>('');
   const [sortBy, setSortBy] = useState<'newest' | 'price-low' | 'price-high'>('newest');
 
-  // Mendapatkan kategori unik dari produk
   const categories = useMemo(() => {
     const cats = products.map(p => p.category);
     return ['All', ...Array.from(new Set(cats))];
@@ -319,7 +318,6 @@ const ProductsPage: React.FC = () => {
       return matchSearch && matchCategory && matchMinPrice && matchMaxPrice;
     });
 
-    // Sorting
     if (sortBy === 'price-low') result.sort((a, b) => a.price - b.price);
     if (sortBy === 'price-high') result.sort((a, b) => b.price - a.price);
     if (sortBy === 'newest') result.sort((a, b) => b.createdAt - a.createdAt);
@@ -344,7 +342,6 @@ const ProductsPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Filter Bar */}
           <div className="flex flex-col gap-6 p-8 bg-white dark:bg-[#1a2e1a] rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm">
             <div className="flex flex-wrap items-center gap-4">
               <span className="text-xs font-black uppercase tracking-widest text-gray-400 mr-2">Category:</span>
@@ -455,6 +452,19 @@ const App: React.FC = () => {
       }
     }
   }, [fetchData]);
+
+  // Efek untuk update Favicon secara dinamis
+  useEffect(() => {
+    if (siteSettings.faviconUrl) {
+      let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.getElementsByTagName('head')[0].appendChild(link);
+      }
+      link.href = siteSettings.faviconUrl;
+    }
+  }, [siteSettings.faviconUrl]);
 
   useEffect(() => {
     localStorage.setItem('lumina_cart', JSON.stringify(cart));

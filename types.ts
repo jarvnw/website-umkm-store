@@ -53,6 +53,7 @@ export interface UserInfo {
 export interface SiteSettings {
   siteName: string;
   logoUrl: string;
+  faviconUrl: string;
   heroImage: string;
   heroTitle: string;
   heroSubtitle: string;

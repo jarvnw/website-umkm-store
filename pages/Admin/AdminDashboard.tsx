@@ -73,7 +73,6 @@ const AdminDashboard: React.FC = () => {
     e.preventDefault();
     if (!editingProduct) return;
 
-    // Validasi Minimal
     if (!editingProduct.variations || editingProduct.variations.length === 0) {
       alert('Minimal harus memiliki 1 variasi harga!');
       return;
@@ -201,10 +200,42 @@ const AdminDashboard: React.FC = () => {
                 }
              }} className="flex flex-col gap-4">
                 
+                <SectionHeader title="Branding & Favicon" icon="branding_watermark" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+                   {/* Logo Upload */}
+                   <div className="flex flex-col gap-4 p-6 bg-gray-50 dark:bg-black/20 rounded-3xl border border-gray-100 dark:border-gray-800">
+                      <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">Logo Website</label>
+                      <div className="flex items-center gap-4">
+                         <div className="size-20 shrink-0 bg-white dark:bg-black/40 rounded-2xl overflow-hidden border border-dashed border-gray-200 dark:border-gray-800 flex items-center justify-center relative">
+                            {localSettings?.logoUrl ? <img src={localSettings.logoUrl} className="w-full h-full object-contain" /> : <span className="material-symbols-outlined text-gray-300">image</span>}
+                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={async (e) => {
+                               const file = e.target.files?.[0];
+                               if(file && localSettings) { try { const url = await uploadToImageKit(file); setLocalSettings({...localSettings, logoUrl: url}); } catch(e) {} }
+                            }} />
+                         </div>
+                         <input className="flex-1 h-12 border-2 rounded-xl px-4 font-bold text-xs bg-white dark:bg-black/40 outline-none focus:border-primary" placeholder="URL Logo..." value={localSettings?.logoUrl || ''} onChange={e => localSettings && setLocalSettings({...localSettings, logoUrl: e.target.value})} />
+                      </div>
+                   </div>
+
+                   {/* Favicon Upload */}
+                   <div className="flex flex-col gap-4 p-6 bg-gray-50 dark:bg-black/20 rounded-3xl border border-gray-100 dark:border-gray-800">
+                      <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">Favicon (Ikon Browser)</label>
+                      <div className="flex items-center gap-4">
+                         <div className="size-20 shrink-0 bg-white dark:bg-black/40 rounded-2xl overflow-hidden border border-dashed border-gray-200 dark:border-gray-800 flex items-center justify-center relative">
+                            {localSettings?.faviconUrl ? <img src={localSettings.faviconUrl} className="size-10 object-contain" /> : <span className="material-symbols-outlined text-gray-300 text-3xl">token</span>}
+                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={async (e) => {
+                               const file = e.target.files?.[0];
+                               if(file && localSettings) { try { const url = await uploadToImageKit(file); setLocalSettings({...localSettings, faviconUrl: url}); } catch(e) {} }
+                            }} />
+                         </div>
+                         <input className="flex-1 h-12 border-2 rounded-xl px-4 font-bold text-xs bg-white dark:bg-black/40 outline-none focus:border-primary" placeholder="URL Favicon (.ico, .png, .svg)..." value={localSettings?.faviconUrl || ''} onChange={e => localSettings && setLocalSettings({...localSettings, faviconUrl: e.target.value})} />
+                      </div>
+                   </div>
+                </div>
+
                 <SectionHeader title="Umum & Hero" icon="home" />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Nama Toko</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.siteName} onChange={e => localSettings && setLocalSettings({...localSettings, siteName: e.target.value})} /></div>
-                  <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">URL Logo</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.logoUrl} onChange={e => localSettings && setLocalSettings({...localSettings, logoUrl: e.target.value})} /></div>
                   <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Headline Hero (Judul Besar)</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.heroTitle} onChange={e => localSettings && setLocalSettings({...localSettings, heroTitle: e.target.value})} /></div>
                   <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Subtitle Hero</label><textarea className="h-24 border-2 rounded-2xl p-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold resize-none" value={localSettings?.heroSubtitle} onChange={e => localSettings && setLocalSettings({...localSettings, heroSubtitle: e.target.value})} /></div>
                   <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">URL Gambar Hero</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.heroImage} onChange={e => localSettings && setLocalSettings({...localSettings, heroImage: e.target.value})} /></div>
@@ -321,7 +352,6 @@ const AdminDashboard: React.FC = () => {
                    <div className="flex flex-col gap-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Kategori</label><input required className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold" value={editingProduct?.category || ''} onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })} /></div>
                    <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Deskripsi Produk</label><textarea required className="h-32 border-2 rounded-2xl p-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold resize-none" value={editingProduct?.description || ''} onChange={e => setEditingProduct({ ...editingProduct, description: e.target.value })} /></div>
                    
-                   {/* COVER PHOTO */}
                    <div className="flex flex-col gap-4 border-2 border-gray-100 dark:border-gray-800 p-8 rounded-[32px] bg-gray-50/50 dark:bg-black/10 md:col-span-2">
                      <h4 className="font-black text-xs uppercase tracking-widest text-primary">Foto Sampul Utama</h4>
                      <div className="flex flex-col md:flex-row gap-8 items-center">
@@ -340,7 +370,6 @@ const AdminDashboard: React.FC = () => {
                      </div>
                    </div>
 
-                   {/* GALERI TAMBAHAN */}
                    <div className="md:col-span-2 space-y-4">
                      <div className="flex items-center justify-between">
                         <h4 className="font-black text-xs uppercase tracking-widest text-primary">Galeri Media Tambahan ({editingProduct?.gallery?.length || 0}/9)</h4>
@@ -369,7 +398,6 @@ const AdminDashboard: React.FC = () => {
                      </div>
                    </div>
 
-                   {/* VARIASI HARGA */}
                    <div className="md:col-span-2 space-y-4">
                      <div className="flex items-center justify-between">
                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Varian & Stok</label>
