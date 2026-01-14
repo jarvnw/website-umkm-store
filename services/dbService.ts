@@ -1,24 +1,18 @@
 
 import { Product, CSContact, SiteSettings, Testimonial, AdminCredentials } from '../types';
 
-// Fungsi helper untuk mengambil environment variable secara aman di berbagai environment
 const getEnv = (key: string): string => {
   try {
-    // Coba standard Vite
-    if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
-      return (import.meta as any).env[key] || '';
-    }
-    // Coba standard Node/CJS (jika ada polyfill)
-    if (typeof process !== 'undefined' && process.env) {
-      return process.env[key] || '';
-    }
-  } catch (e) {
-    console.warn(`Gagal mengakses environment variable: ${key}`);
-  }
+    // @ts-ignore
+    if (typeof import.meta !== 'undefined' && import.meta.env) return import.meta.env[key] || '';
+    if (typeof process !== 'undefined' && process.env) return process.env[key] || '';
+  } catch (e) {}
   return '';
 };
 
-const NEON_API_URL = getEnv('VITE_NEON_API_URL');
+// Pastikan VITE_NEON_API_URL adalah host database Anda (contoh: ep-cool-darkness-123456.us-east-2.aws.neon.tech)
+// Dan VITE_NEON_API_KEY adalah API Key / Password database Anda.
+const NEON_HOST = getEnv('VITE_NEON_API_URL').replace('https://', '').split('/')[0];
 const NEON_API_KEY = getEnv('VITE_NEON_API_KEY');
 
 const PRODUCTS_KEY = 'lumina_products';
@@ -32,139 +26,204 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   logoUrl: '',
   heroImage: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&q=80&w=2000',
   heroTitle: 'Elegance in Every Detail.',
-  heroSubtitle: 'Discover premium goods curated for those who appreciate high-quality craftsmanship and modern minimalist design.',
-  footerDescription: 'Crafting a seamless shopping experience for the modern aesthetic. Your one-stop shop for premium, artisanal UMKM goods.',
-  // About Us Defaults
+  heroSubtitle: 'Discover premium goods curated for those who appreciate high-quality craftsmanship.',
+  footerDescription: 'Your one-stop shop for premium, artisanal UMKM goods.',
   aboutHeaderTitle: 'Our Story',
-  aboutHeaderDesc: 'LuminaGoods started as a small UMKM with a big dream: to bring artisanal craftsmanship to the modern home. We believe that every product has a story, and every detail matters.',
+  aboutHeaderDesc: 'Bringing artisanal craftsmanship to the modern home.',
   aboutSectionTitle: 'Crafted with Purpose',
-  aboutSectionDesc: 'Each item is handpicked for quality. We preserve traditional techniques with modern aesthetic standards.',
+  aboutSectionDesc: 'Each item is handpicked for quality.',
   aboutSectionImage: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=1200',
-  // Contact & Social Media
   contactEmail: 'hello@luminagoods.id',
   contactPhone: '+62 812-3456-7890',
   contactAddress: 'Jakarta, Indonesia',
-  instagramUrl: 'https://instagram.com/',
-  tiktokUrl: 'https://tiktok.com/',
-  facebookUrl: 'https://facebook.com/',
-  youtubeUrl: 'https://youtube.com/'
+  instagramUrl: '', tiktokUrl: '', facebookUrl: '', youtubeUrl: ''
 };
 
-async function apiFetch(endpoint: string, options?: RequestInit) {
-  if (!NEON_API_URL) return null;
-  
+/**
+ * Fungsi Utama untuk menjalankan SQL di Neon via HTTP
+ */
+async function runQuery(sql: string) {
+  if (!NEON_HOST || !NEON_API_KEY) {
+    console.warn("Neon Config Missing. Using LocalStorage only.");
+    return null;
+  }
+
   try {
-    const res = await fetch(`${NEON_API_URL}${endpoint}`, {
-      ...options,
+    const response = await fetch(`https://${NEON_HOST}/sql`, {
+      method: 'POST',
       headers: {
+        'Authorization': `Bearer ${NEON_API_KEY}`,
         'Content-Type': 'application/json',
-        ...(NEON_API_KEY ? { 'Authorization': `Bearer ${NEON_API_KEY}` } : {}),
-        ...options?.headers
-      }
+      },
+      body: JSON.stringify({ query: sql }),
     });
-    
-    if (!res.ok) return null;
-    return await res.json();
+
+    const result = await response.json();
+    if (result.error) throw new Error(result.error);
+    return result.rows || [];
   } catch (e) {
-    console.error('Neon API Error:', e);
+    console.error('Neon SQL Error:', e);
     return null;
   }
 }
 
 export const dbService = {
   async getProducts(): Promise<Product[]> {
-    const apiData = await apiFetch('/products');
-    if (apiData) return apiData;
-    
-    const data = localStorage.getItem(PRODUCTS_KEY);
-    return data ? JSON.parse(data) : [];
+    const rows = await runQuery('SELECT * FROM products ORDER BY created_at DESC');
+    if (rows) {
+      const formatted = rows.map((r: any) => ({
+        id: r.id,
+        name: r.name,
+        description: r.description,
+        price: Number(r.price),
+        category: r.category,
+        image: r.image,
+        coverMedia: typeof r.cover_media === 'string' ? JSON.parse(r.cover_media) : r.cover_media,
+        gallery: typeof r.gallery === 'string' ? JSON.parse(r.gallery) : r.gallery,
+        variations: typeof r.variations === 'string' ? JSON.parse(r.variations) : r.variations,
+        isFeatured: Boolean(r.is_featured),
+        createdAt: Number(r.created_at)
+      }));
+      localStorage.setItem(PRODUCTS_KEY, JSON.stringify(formatted));
+      return formatted;
+    }
+    const local = localStorage.getItem(PRODUCTS_KEY);
+    return local ? JSON.parse(local) : [];
   },
 
-  async saveProduct(product: Product): Promise<void> {
-    await apiFetch('/products', { method: 'POST', body: JSON.stringify(product) });
-    
-    const products = await this.getProducts();
-    const index = products.findIndex(p => p.id === product.id);
-    if (index >= 0) products[index] = product;
-    else products.push(product);
-    localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
+  async saveProduct(p: Product): Promise<void> {
+    const sql = `
+      INSERT INTO products (id, name, description, price, category, image, cover_media, gallery, variations, is_featured, created_at)
+      VALUES (
+        '${p.id}', 
+        '${p.name.replace(/'/g, "''")}', 
+        '${p.description.replace(/'/g, "''")}', 
+        ${p.price}, 
+        '${p.category}', 
+        '${p.image}', 
+        '${JSON.stringify(p.coverMedia)}', 
+        '${JSON.stringify(p.gallery)}', 
+        '${JSON.stringify(p.variations)}', 
+        ${p.isFeatured}, 
+        ${p.createdAt}
+      )
+      ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        description = EXCLUDED.description,
+        price = EXCLUDED.price,
+        category = EXCLUDED.category,
+        image = EXCLUDED.image,
+        cover_media = EXCLUDED.cover_media,
+        gallery = EXCLUDED.gallery,
+        variations = EXCLUDED.variations,
+        is_featured = EXCLUDED.is_featured;
+    `;
+    await runQuery(sql);
   },
 
   async deleteProduct(id: string): Promise<void> {
-    await apiFetch(`/products/${id}`, { method: 'DELETE' });
-    const products = await this.getProducts();
-    localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products.filter(p => p.id !== id)));
+    await runQuery(`DELETE FROM products WHERE id = '${id}'`);
   },
 
   async getCSContacts(): Promise<CSContact[]> {
-    const apiData = await apiFetch('/cs-contacts');
-    if (apiData) return apiData;
-    
-    const data = localStorage.getItem(CS_KEY);
-    return data ? JSON.parse(data) : [{ id: '1', name: 'Admin CS', phoneNumber: '6281234567890', isActive: true }];
+    const rows = await runQuery('SELECT * FROM cs_contacts');
+    if (rows) {
+      const formatted = rows.map((r: any) => ({
+        id: r.id,
+        name: r.name,
+        phoneNumber: r.phone_number,
+        isActive: Boolean(r.is_active)
+      }));
+      localStorage.setItem(CS_KEY, JSON.stringify(formatted));
+      return formatted;
+    }
+    const local = localStorage.getItem(CS_KEY);
+    return local ? JSON.parse(local) : [];
   },
 
-  async saveCSContact(contact: CSContact): Promise<void> {
-    await apiFetch('/cs-contacts', { method: 'POST', body: JSON.stringify(contact) });
-    const contacts = await this.getCSContacts();
-    const index = contacts.findIndex(c => c.id === contact.id);
-    if (index >= 0) contacts[index] = contact;
-    else contacts.push(contact);
-    localStorage.setItem(CS_KEY, JSON.stringify(contacts));
+  async saveCSContact(c: CSContact): Promise<void> {
+    const sql = `
+      INSERT INTO cs_contacts (id, name, phone_number, is_active)
+      VALUES ('${c.id}', '${c.name.replace(/'/g, "''")}', '${c.phoneNumber}', ${c.isActive})
+      ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        phone_number = EXCLUDED.phone_number,
+        is_active = EXCLUDED.is_active;
+    `;
+    await runQuery(sql);
   },
 
   async deleteCSContact(id: string): Promise<void> {
-    await apiFetch(`/cs-contacts/${id}`, { method: 'DELETE' });
-    const contacts = await this.getCSContacts();
-    localStorage.setItem(CS_KEY, JSON.stringify(contacts.filter(c => c.id !== id)));
+    await runQuery(`DELETE FROM cs_contacts WHERE id = '${id}'`);
   },
 
   async getTestimonials(): Promise<Testimonial[]> {
-    const apiData = await apiFetch('/testimonials');
-    if (apiData) return apiData;
-    
-    const data = localStorage.getItem(TESTIMONIALS_KEY);
-    return data ? JSON.parse(data) : [];
+    const rows = await runQuery('SELECT * FROM testimonials');
+    if (rows) {
+      const formatted = rows.map((r: any) => ({
+        id: r.id,
+        imageUrl: r.image_url,
+        customerName: r.customer_name,
+        isActive: Boolean(r.is_active)
+      }));
+      localStorage.setItem(TESTIMONIALS_KEY, JSON.stringify(formatted));
+      return formatted;
+    }
+    const local = localStorage.getItem(TESTIMONIALS_KEY);
+    return local ? JSON.parse(local) : [];
   },
 
-  async saveTestimonial(testimonial: Testimonial): Promise<void> {
-    await apiFetch('/testimonials', { method: 'POST', body: JSON.stringify(testimonial) });
-    const testimonials = await this.getTestimonials();
-    const index = testimonials.findIndex(t => t.id === testimonial.id);
-    if (index >= 0) testimonials[index] = testimonial;
-    else testimonials.push(testimonial);
-    localStorage.setItem(TESTIMONIALS_KEY, JSON.stringify(testimonials));
+  async saveTestimonial(t: Testimonial): Promise<void> {
+    const sql = `
+      INSERT INTO testimonials (id, image_url, customer_name, is_active)
+      VALUES ('${t.id}', '${t.imageUrl}', '${(t.customerName || '').replace(/'/g, "''")}', ${t.isActive})
+      ON CONFLICT (id) DO UPDATE SET
+        image_url = EXCLUDED.image_url,
+        customer_name = EXCLUDED.customer_name,
+        is_active = EXCLUDED.is_active;
+    `;
+    await runQuery(sql);
   },
 
   async deleteTestimonial(id: string): Promise<void> {
-    await apiFetch(`/testimonials/${id}`, { method: 'DELETE' });
-    const testimonials = await this.getTestimonials();
-    localStorage.setItem(TESTIMONIALS_KEY, JSON.stringify(testimonials.filter(t => t.id !== id)));
+    await runQuery(`DELETE FROM testimonials WHERE id = '${id}'`);
   },
 
   async getSiteSettings(): Promise<SiteSettings> {
-    const apiData = await apiFetch('/settings');
-    if (apiData) return apiData;
-    
-    const data = localStorage.getItem(SITE_SETTINGS_KEY);
-    return data ? JSON.parse(data) : DEFAULT_SETTINGS;
+    const rows = await runQuery("SELECT data FROM site_settings WHERE id = 'main_settings'");
+    if (rows && rows.length > 0) {
+      const settings = typeof rows[0].data === 'string' ? JSON.parse(rows[0].data) : rows[0].data;
+      localStorage.setItem(SITE_SETTINGS_KEY, JSON.stringify(settings));
+      return settings;
+    }
+    const local = localStorage.getItem(SITE_SETTINGS_KEY);
+    return local ? JSON.parse(local) : DEFAULT_SETTINGS;
   },
 
   async saveSiteSettings(settings: SiteSettings): Promise<void> {
-    await apiFetch('/settings', { method: 'POST', body: JSON.stringify(settings) });
+    const sql = `
+      INSERT INTO site_settings (id, data)
+      VALUES ('main_settings', '${JSON.stringify(settings)}')
+      ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data;
+    `;
+    await runQuery(sql);
     localStorage.setItem(SITE_SETTINGS_KEY, JSON.stringify(settings));
   },
 
   async getAdminCredentials(): Promise<AdminCredentials> {
-    const apiData = await apiFetch('/admin-auth');
-    if (apiData) return apiData;
-    
-    const data = localStorage.getItem(ADMIN_KEY);
-    return data ? JSON.parse(data) : { username: 'admin', password: 'admin123' };
+    const rows = await runQuery("SELECT username, password FROM admin_auth WHERE id = 'admin_config'");
+    if (rows && rows.length > 0) return { username: rows[0].username, password: rows[0].password };
+    return { username: 'admin', password: 'admin123' };
   },
 
   async saveAdminCredentials(creds: AdminCredentials): Promise<void> {
-    await apiFetch('/admin-auth', { method: 'POST', body: JSON.stringify(creds) });
-    localStorage.setItem(ADMIN_KEY, JSON.stringify(creds));
+    const sql = `
+      INSERT INTO admin_auth (id, username, password)
+      VALUES ('admin_config', '${creds.username}', '${creds.password}')
+      ON CONFLICT (id) DO UPDATE SET 
+        username = EXCLUDED.username, 
+        password = EXCLUDED.password;
+    `;
+    await runQuery(sql);
   }
 };
