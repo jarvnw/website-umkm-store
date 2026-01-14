@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { dbService } from '../../services/dbService';
 import { Product, CSContact, Media, Variation, SiteSettings, Testimonial, AdminCredentials } from '../../types';
-import { useStore } from '../../App';
+import { useStore, THEME_COLORS } from '../../App';
 
 const getEnv = (key: string): string => {
   // @ts-ignore
@@ -229,6 +229,29 @@ const AdminDashboard: React.FC = () => {
                             }} />
                          </div>
                          <input className="flex-1 h-12 border-2 rounded-xl px-4 font-bold text-xs bg-white dark:bg-black/40 outline-none focus:border-primary" placeholder="URL Favicon (.ico, .png, .svg)..." value={localSettings?.faviconUrl || ''} onChange={e => localSettings && setLocalSettings({...localSettings, faviconUrl: e.target.value})} />
+                      </div>
+                   </div>
+                </div>
+
+                <SectionHeader title="Tema & Warna" icon="palette" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                   <div className="flex flex-col gap-2">
+                     <label className="text-[10px] font-black uppercase text-gray-400 ml-2">Pilih Tema Warna</label>
+                     <select 
+                        className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold cursor-pointer"
+                        value={localSettings?.themeColor || 'Green'}
+                        onChange={e => localSettings && setLocalSettings({...localSettings, themeColor: e.target.value})}
+                     >
+                       {Object.keys(THEME_COLORS).map(theme => (
+                         <option key={theme} value={theme}>{theme}</option>
+                       ))}
+                     </select>
+                   </div>
+                   <div className="flex items-center gap-4 p-6 bg-gray-50 dark:bg-black/20 rounded-3xl border border-gray-100 dark:border-gray-800">
+                      <div className="size-12 rounded-full border-4 border-white dark:border-black shadow-lg" style={{ backgroundColor: THEME_COLORS[localSettings?.themeColor || 'Green'] }}></div>
+                      <div>
+                        <p className="font-black text-xs uppercase tracking-widest">Preview Warna</p>
+                        <p className="text-[10px] text-gray-400 font-bold">{THEME_COLORS[localSettings?.themeColor || 'Green']}</p>
                       </div>
                    </div>
                 </div>

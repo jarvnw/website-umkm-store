@@ -12,6 +12,17 @@ import AdminDashboard from './pages/Admin/AdminDashboard';
 import AdminLogin from './pages/Admin/AdminLogin';
 import { PrivacyPolicy, TermsOfService } from './pages/LegalPages';
 
+// --- THEME COLORS MAPPING ---
+export const THEME_COLORS: Record<string, string> = {
+  'Green': '#13ec13',
+  'Blue': '#2563eb',
+  'Neutral': '#404040',
+  'Orange': '#f97316',
+  'Rose': '#f43f5e',
+  'Violet': '#8b5cf6',
+  'Yellow': '#facc15'
+};
+
 // --- HELPER COMPONENTS ---
 
 const ScrollToTop = () => {
@@ -515,6 +526,13 @@ const App: React.FC = () => {
       }
     }
   }, [fetchData]);
+
+  // Efek untuk update Tema Warna secara dinamis
+  useEffect(() => {
+    const themeName = siteSettings.themeColor || 'Green';
+    const hex = THEME_COLORS[themeName] || THEME_COLORS['Green'];
+    document.documentElement.style.setProperty('--primary', hex);
+  }, [siteSettings.themeColor]);
 
   // Efek untuk update Favicon secara dinamis
   useEffect(() => {

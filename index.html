@@ -14,7 +14,7 @@
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website">
   <meta property="og:title" content="Toko UMKM">
-  <meta property="og:description" content="Koleksi eksklusif produk UMKM dengan mekanisme pemesanan WhatsApp yang simpel dan personal.">
+  <meta property="og:description" content="Koleksi eksklusif produk UMKM dengan mekanisme pemesanan WhatsApp yang simpel and personal.">
 
   <!-- Assets & Performance -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -34,7 +34,7 @@
       theme: {
         extend: {
           colors: {
-            "primary": "#13ec13",
+            "primary": "var(--primary, #13ec13)",
             "background-light": "#f6f8f6",
             "background-dark": "#102210",
           },
@@ -47,6 +47,10 @@
     }
   </script>
   <style>
+    :root {
+      --primary: #13ec13;
+    }
+
     .material-symbols-outlined {
       font-family: 'Material Symbols Outlined' !important;
       font-weight: normal;
@@ -79,7 +83,7 @@
       content: "Memuat Toko...";
       font-family: 'Inter', sans-serif;
       font-weight: 900;
-      color: #13ec13;
+      color: var(--primary, #13ec13);
       font-size: 1.5rem;
       letter-spacing: -0.05em;
     }
