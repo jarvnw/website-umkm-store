@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, createContext, useContext, useMemo } from 'react';
-import { HashRouter as Router, Routes, Route, Link, useNavigate, useParams } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Product, CartItem, CSContact, UserInfo, Variation, SiteSettings, Testimonial } from './types';
 import { dbService, DEFAULT_SETTINGS } from './services/dbService';
 import Header from './components/Header';
@@ -11,6 +11,17 @@ import ProductCard from './components/ProductCard';
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import AdminLogin from './pages/Admin/AdminLogin';
 import { PrivacyPolicy, TermsOfService } from './pages/LegalPages';
+
+// --- HELPER COMPONENTS ---
+
+// Komponen untuk memaksa scroll ke atas setiap kali pindah halaman
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+};
 
 interface StoreContextType {
   products: Product[];
@@ -132,28 +143,28 @@ const ProductDetailPage: React.FC = () => {
   const allMedia = [product.coverMedia, ...(product.gallery || [])].filter(m => m && m.url);
 
   return (
-    <div className="px-4 md:px-10 lg:px-40 py-10 md:py-20 flex justify-center animate-in fade-in duration-700">
-      <div className="max-w-[1200px] w-full flex flex-col gap-6 md:gap-10">
+    <div className="px-4 md:px-10 lg:px-40 py-6 md:py-16 flex justify-center animate-in fade-in duration-700">
+      <div className="max-w-[1200px] w-full flex flex-col gap-6 md:gap-8">
         
-        {/* Navigation Row */}
+        {/* Navigation Bar - Tetap di Atas */}
         <div className="flex items-center">
           <button 
             onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-gray-500 hover:text-primary transition-colors font-black text-xs uppercase tracking-widest"
+            className="group flex items-center gap-3 text-[#111811] dark:text-white transition-all font-black text-xs uppercase tracking-[0.2em] bg-white dark:bg-[#1a2e1a] px-5 py-3 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 hover:text-primary hover:border-primary"
           >
-            <span className="material-symbols-outlined text-lg">arrow_back</span>
-            Kembali
+            <span className="material-symbols-outlined text-lg transition-transform group-hover:-translate-x-1">arrow_back</span>
+            Kembali Ke Galeri
           </button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-16 items-start">
-          {/* Left Side: Media Gallery */}
+          {/* Media Section: Above the fold on mobile */}
           <div className="flex flex-col gap-4">
-            <div className="rounded-[40px] overflow-hidden aspect-square bg-gray-50 dark:bg-black/20 relative border border-gray-100 dark:border-gray-800 shadow-xl group">
+            <div className="rounded-[40px] overflow-hidden aspect-square bg-white dark:bg-black/20 relative border border-gray-100 dark:border-gray-800 shadow-2xl group">
               {allMedia[activeMedia]?.type === 'video' ? (
                 <video src={allMedia[activeMedia].url} className="w-full h-full object-cover" controls autoPlay loop muted />
               ) : (
-                <img src={allMedia[activeMedia]?.url || product.image} alt={product.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                <img src={allMedia[activeMedia]?.url || product.image} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
               )}
             </div>
             {allMedia.length > 1 && (
@@ -177,7 +188,7 @@ const ProductDetailPage: React.FC = () => {
             )}
           </div>
 
-          {/* Right Side: Product Details */}
+          {/* Details Section */}
           <div className="flex flex-col">
             <div className="mb-8">
               <span className="inline-block px-4 py-1.5 bg-primary/10 text-primary font-black text-[10px] tracking-[0.2em] uppercase rounded-full mb-4">
@@ -191,9 +202,9 @@ const ProductDetailPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="bg-gray-50/50 dark:bg-white/5 p-8 rounded-[32px] border border-gray-100 dark:border-gray-800 mb-8">
+            <div className="bg-white dark:bg-[#1a2e1a] p-8 rounded-[32px] border border-gray-100 dark:border-gray-800 mb-8 shadow-sm">
               <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4 flex items-center gap-2">
-                <span className="material-symbols-outlined text-sm">description</span> Deskripsi Produk
+                <span className="material-symbols-outlined text-sm">description</span> Detail Produk
               </h4>
               <p className="text-gray-600 dark:text-gray-400 leading-relaxed text-lg whitespace-pre-line">
                 {product.description}
@@ -210,7 +221,7 @@ const ProductDetailPage: React.FC = () => {
                     <button 
                       key={v.id}
                       onClick={() => setSelectedVar(v)}
-                      className={`px-6 py-3 rounded-2xl font-bold border-2 transition-all flex flex-col gap-0.5 ${selectedVar?.id === v.id ? 'border-primary bg-primary text-black' : 'border-gray-200 dark:border-gray-800 text-gray-500 hover:border-primary/50'}`}
+                      className={`px-6 py-3 rounded-2xl font-bold border-2 transition-all flex flex-col gap-0.5 ${selectedVar?.id === v.id ? 'border-primary bg-primary text-black shadow-lg shadow-primary/20' : 'border-gray-200 dark:border-gray-800 text-gray-500 hover:border-primary/50'}`}
                     >
                       <span className="text-sm">{v.name}</span>
                       {v.stock <= 5 && v.stock > 0 && <span className="text-[8px] uppercase font-black opacity-70">Sisa {v.stock}</span>}
@@ -224,7 +235,7 @@ const ProductDetailPage: React.FC = () => {
             <button 
               onClick={() => addToCart(product, selectedVar || undefined)}
               disabled={selectedVar && selectedVar.stock <= 0}
-              className="flex items-center justify-center gap-4 bg-primary text-[#111811] h-16 md:h-20 rounded-[24px] text-xl font-black hover:scale-[1.02] transition-all shadow-2xl shadow-primary/20 disabled:opacity-50 disabled:scale-100 disabled:grayscale"
+              className="flex items-center justify-center gap-4 bg-primary text-[#111811] h-16 md:h-20 rounded-[24px] text-xl font-black hover:scale-[1.02] transition-all shadow-2xl shadow-primary/30 disabled:opacity-50 disabled:scale-100 disabled:grayscale"
             >
               <span className="material-symbols-outlined font-black">add_shopping_cart</span>
               Tambah ke Keranjang
@@ -550,6 +561,7 @@ const App: React.FC = () => {
       clearCart, csContacts, testimonials, siteSettings, refreshData: fetchData, isCartOpen, setIsCartOpen 
     }}>
       <Router>
+        <ScrollToTop />
         <div className="min-h-screen flex flex-col">
           <Header onCartOpen={() => setIsCartOpen(true)} cartCount={cart.reduce((acc, item) => acc + item.quantity, 0)} />
           <main className="flex-1">
