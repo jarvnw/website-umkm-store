@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, createContext, useContext, useRef } from 'react';
+import React, { useState, useEffect, useCallback, createContext, useContext, useRef, useMemo } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useParams, useLocation } from 'react-router-dom';
 import { Product, CartItem, CSContact, Variation, SiteSettings, Testimonial, Media } from './types';
 import { dbService, DEFAULT_SETTINGS } from './services/dbService';
@@ -310,27 +310,146 @@ const HomePage: React.FC = () => {
 const ProductsPage: React.FC = () => {
   const { products } = useStore();
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const categories = ['All', ...new Set(products.map(p => p.category))];
-  const filtered = selectedCategory === 'All' ? products : products.filter(p => p.category === selectedCategory);
+  const [minPrice, setMinPrice] = useState<number>(0);
+  const [maxPrice, setMaxPrice] = useState<number>(10000000); // 10jt default
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'newest' | 'price-low' | 'price-high'>('newest');
+  const [isFilterVisible, setIsFilterVisible] = useState(false);
+
+  const categories = useMemo(() => ['All', ...new Set(products.map(p => p.category))], [products]);
+
+  const filteredAndSorted = useMemo(() => {
+    return products
+      .filter(p => {
+        const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory;
+        const matchesPrice = p.price >= minPrice && p.price <= maxPrice;
+        const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                             p.category.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesCategory && matchesPrice && matchesSearch;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'price-low') return a.price - b.price;
+        if (sortBy === 'price-high') return b.price - a.price;
+        return b.createdAt - a.createdAt; // newest
+      });
+  }, [products, selectedCategory, minPrice, maxPrice, searchQuery, sortBy]);
 
   return (
     <div className="px-4 md:px-10 lg:px-40 py-20 flex justify-center flex-col items-center">
       <div className="max-w-[1200px] w-full">
-        <h1 className="text-4xl font-black mb-8">Semua Produk</h1>
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-6">
-          {categories.map(cat => (
-            <button 
-              key={cat} 
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest whitespace-nowrap transition-all ${selectedCategory === cat ? 'bg-primary text-black' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200'}`}
-            >
-              {cat}
-            </button>
-          ))}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+           <div>
+              <h1 className="text-4xl font-black tracking-tight mb-2">Semua Produk</h1>
+              <p className="text-gray-500 font-medium">Menampilkan {filteredAndSorted.length} koleksi pilihan.</p>
+           </div>
+           
+           <div className="flex flex-wrap gap-3">
+              <div className="relative flex-1 md:flex-none md:w-64">
+                 <input 
+                   type="text" 
+                   placeholder="Cari produk..." 
+                   className="w-full h-12 bg-white dark:bg-black/20 border-2 border-gray-100 dark:border-gray-800 rounded-xl px-12 font-bold text-sm outline-none focus:border-primary transition-all"
+                   value={searchQuery}
+                   onChange={e => setSearchQuery(e.target.value)}
+                 />
+                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+              </div>
+              <button 
+                onClick={() => setIsFilterVisible(!isFilterVisible)}
+                className={`h-12 px-6 rounded-xl border-2 font-black text-xs uppercase tracking-widest flex items-center gap-2 transition-all ${isFilterVisible ? 'bg-primary border-primary text-black' : 'bg-white dark:bg-black/20 border-gray-100 dark:border-gray-800 text-gray-500 hover:border-primary hover:text-primary'}`}
+              >
+                <span className="material-symbols-outlined text-lg">tune</span> 
+                {isFilterVisible ? 'Tutup Filter' : 'Filter & Urutkan'}
+              </button>
+           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 py-4">
-          {filtered.map(product => <ProductCard key={product.id} product={product} />)}
+
+        {/* EXPANDABLE FILTER SECTION */}
+        <div className={`overflow-hidden transition-all duration-500 ease-in-out ${isFilterVisible ? 'max-h-[1000px] mb-12 opacity-100' : 'max-h-0 mb-0 opacity-0'}`}>
+           <div className="bg-white dark:bg-black/20 rounded-[32px] p-8 border border-gray-100 dark:border-gray-800 grid grid-cols-1 md:grid-cols-3 gap-10">
+              
+              {/* Category Filter */}
+              <div>
+                <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em] mb-4">Kategori</h4>
+                <div className="flex flex-wrap gap-2">
+                  {categories.map(cat => (
+                    <button 
+                      key={cat} 
+                      onClick={() => setSelectedCategory(cat)}
+                      className={`px-4 py-2 rounded-full font-black text-[10px] uppercase tracking-widest transition-all ${selectedCategory === cat ? 'bg-primary text-black' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200'}`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Price Filter */}
+              <div>
+                <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em] mb-4">Rentang Harga (Rp)</h4>
+                <div className="flex items-center gap-3">
+                   <div className="flex-1">
+                      <input 
+                        type="number" 
+                        placeholder="Min" 
+                        className="w-full h-11 bg-gray-50 dark:bg-black/40 border border-gray-100 dark:border-gray-800 rounded-xl px-4 text-xs font-bold outline-none focus:border-primary"
+                        value={minPrice}
+                        onChange={e => setMinPrice(Number(e.target.value))}
+                      />
+                   </div>
+                   <div className="w-4 h-0.5 bg-gray-300"></div>
+                   <div className="flex-1">
+                      <input 
+                        type="number" 
+                        placeholder="Max" 
+                        className="w-full h-11 bg-gray-50 dark:bg-black/40 border border-gray-100 dark:border-gray-800 rounded-xl px-4 text-xs font-bold outline-none focus:border-primary"
+                        value={maxPrice}
+                        onChange={e => setMaxPrice(Number(e.target.value))}
+                      />
+                   </div>
+                </div>
+                <div className="flex justify-between mt-3 px-1">
+                   <button onClick={() => { setMinPrice(0); setMaxPrice(10000000); }} className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline">Reset Harga</button>
+                </div>
+              </div>
+
+              {/* Sorting */}
+              <div>
+                <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em] mb-4">Urutkan Berdasarkan</h4>
+                <div className="flex flex-col gap-2">
+                   {[
+                     { id: 'newest', label: 'Terbaru', icon: 'new_releases' },
+                     { id: 'price-low', label: 'Harga: Rendah ke Tinggi', icon: 'trending_down' },
+                     { id: 'price-high', label: 'Harga: Tinggi ke Rendah', icon: 'trending_up' }
+                   ].map(sort => (
+                     <button 
+                       key={sort.id} 
+                       onClick={() => setSortBy(sort.id as any)}
+                       className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${sortBy === sort.id ? 'border-primary bg-primary/5 text-primary' : 'border-transparent text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                     >
+                       <span className="material-symbols-outlined text-lg">{sort.icon}</span>
+                       <span className="text-xs font-black uppercase tracking-widest">{sort.label}</span>
+                     </button>
+                   ))}
+                </div>
+              </div>
+
+           </div>
         </div>
+
+        {/* PRODUCTS GRID */}
+        {filteredAndSorted.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 py-4">
+            {filteredAndSorted.map(product => <ProductCard key={product.id} product={product} />)}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-40 bg-gray-50 dark:bg-black/10 rounded-[40px] border-2 border-dashed border-gray-100 dark:border-gray-800">
+             <span className="material-symbols-outlined text-6xl text-gray-300 mb-4">search_off</span>
+             <h3 className="text-xl font-black mb-2">Produk Tidak Ditemukan</h3>
+             <p className="text-gray-400 font-medium">Coba sesuaikan filter atau kata kunci pencarian Anda.</p>
+             <button onClick={() => { setSelectedCategory('All'); setMinPrice(0); setMaxPrice(10000000); setSearchQuery(''); }} className="mt-8 px-8 py-3 bg-primary text-black rounded-xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform">Reset Semua Filter</button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -279,10 +279,53 @@ const AdminDashboard: React.FC = () => {
                 </div>
 
                 <SectionHeader title="Umum & Hero" icon="home" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
                   <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Nama Toko</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" value={localSettings?.siteName} onChange={e => localSettings && setLocalSettings({...localSettings, siteName: e.target.value})} /></div>
                   <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Hero Title</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" value={localSettings?.heroTitle} onChange={e => localSettings && setLocalSettings({...localSettings, heroTitle: e.target.value})} /></div>
+                  <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Hero Subtitle</label><textarea className="h-24 border-2 rounded-2xl p-6 bg-gray-50 dark:bg-black/20 outline-none font-black resize-none" value={localSettings?.heroSubtitle} onChange={e => localSettings && setLocalSettings({...localSettings, heroSubtitle: e.target.value})} /></div>
                   <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Hero Image URL</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" value={localSettings?.heroImage} onChange={e => localSettings && setLocalSettings({...localSettings, heroImage: e.target.value})} /></div>
+                </div>
+
+                <SectionHeader title="Footer & Deskripsi" icon="vertical_align_bottom" />
+                <div className="grid grid-cols-1 gap-6 mb-10">
+                  <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Deskripsi Footer (Muncul di bagian bawah toko)</label><textarea className="h-32 border-2 rounded-2xl p-6 bg-gray-50 dark:bg-black/20 outline-none font-black resize-none" value={localSettings?.footerDescription} onChange={e => localSettings && setLocalSettings({...localSettings, footerDescription: e.target.value})} /></div>
+                </div>
+
+                <SectionHeader title="Konten Halaman About Us" icon="info" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10 bg-gray-50 dark:bg-black/10 p-8 rounded-[40px] border border-gray-100 dark:border-gray-800">
+                  <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Judul Header (Banner)</label><input className="h-14 border-2 rounded-2xl px-6 bg-white dark:bg-black/40 outline-none font-black" value={localSettings?.aboutHeaderTitle} onChange={e => localSettings && setLocalSettings({...localSettings, aboutHeaderTitle: e.target.value})} /></div>
+                  <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Deskripsi Header</label><textarea className="h-24 border-2 rounded-2xl p-6 bg-white dark:bg-black/40 outline-none font-black resize-none" value={localSettings?.aboutHeaderDesc} onChange={e => localSettings && setLocalSettings({...localSettings, aboutHeaderDesc: e.target.value})} /></div>
+                  
+                  <div className="flex flex-col gap-2 md:col-span-2 mt-4"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Judul Section Utama</label><input className="h-14 border-2 rounded-2xl px-6 bg-white dark:bg-black/40 outline-none font-black" value={localSettings?.aboutSectionTitle} onChange={e => localSettings && setLocalSettings({...localSettings, aboutSectionTitle: e.target.value})} /></div>
+                  <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Deskripsi Section Utama</label><textarea className="h-48 border-2 rounded-2xl p-6 bg-white dark:bg-black/40 outline-none font-black resize-none" value={localSettings?.aboutSectionDesc} onChange={e => localSettings && setLocalSettings({...localSettings, aboutSectionDesc: e.target.value})} /></div>
+                  
+                  <div className="flex flex-col gap-4 md:col-span-2 mt-4">
+                      <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">Gambar Section About Us</label>
+                      <div className="flex items-center gap-6">
+                         <div className="size-24 shrink-0 bg-white dark:bg-black/40 rounded-3xl overflow-hidden border border-dashed border-gray-200 dark:border-gray-800 flex items-center justify-center relative shadow-sm">
+                            {localSettings?.aboutSectionImage ? <img src={localSettings.aboutSectionImage} className="w-full h-full object-cover" /> : <span className="material-symbols-outlined text-gray-300 font-black">image</span>}
+                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onChange={async (e) => {
+                               const file = e.target.files?.[0];
+                               if(file && localSettings) { try { const url = await uploadToImageKit(file); setLocalSettings({...localSettings, aboutSectionImage: url}); } catch(e) {} }
+                            }} />
+                         </div>
+                         <input className="flex-1 h-12 border-2 rounded-xl px-4 font-black text-xs bg-white dark:bg-black/40 outline-none focus:border-primary" placeholder="URL Gambar..." value={localSettings?.aboutSectionImage || ''} onChange={e => localSettings && setLocalSettings({...localSettings, aboutSectionImage: e.target.value})} />
+                      </div>
+                   </div>
+                </div>
+
+                <SectionHeader title="Kontak & Media Sosial" icon="contacts" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                  <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Email Bisnis</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" value={localSettings?.contactEmail} onChange={e => localSettings && setLocalSettings({...localSettings, contactEmail: e.target.value})} /></div>
+                  <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">WhatsApp Bisnis (62...)</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" value={localSettings?.contactPhone} onChange={e => localSettings && setLocalSettings({...localSettings, contactPhone: e.target.value})} /></div>
+                  <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Alamat Fisik / Kota</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" value={localSettings?.contactAddress} onChange={e => localSettings && setLocalSettings({...localSettings, contactAddress: e.target.value})} /></div>
+                  
+                  <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                    <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">URL Instagram</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" placeholder="https://instagram.com/..." value={localSettings?.instagramUrl} onChange={e => localSettings && setLocalSettings({...localSettings, instagramUrl: e.target.value})} /></div>
+                    <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">URL TikTok</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" placeholder="https://tiktok.com/@..." value={localSettings?.tiktokUrl} onChange={e => localSettings && setLocalSettings({...localSettings, tiktokUrl: e.target.value})} /></div>
+                    <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">URL Facebook</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" placeholder="https://facebook.com/..." value={localSettings?.facebookUrl} onChange={e => localSettings && setLocalSettings({...localSettings, facebookUrl: e.target.value})} /></div>
+                    <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">URL YouTube</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" placeholder="https://youtube.com/..." value={localSettings?.youtubeUrl} onChange={e => localSettings && setLocalSettings({...localSettings, youtubeUrl: e.target.value})} /></div>
+                  </div>
                 </div>
 
                 <button disabled={isSaving} className="h-16 bg-primary text-black rounded-2xl font-black text-lg shadow-xl shadow-primary/20 mt-10 hover:scale-[1.01] transition-transform">
