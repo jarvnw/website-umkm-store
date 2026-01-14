@@ -428,10 +428,13 @@ const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   // Apply visual themes when settings change
   useEffect(() => {
     const color = THEME_COLORS[siteSettings.themeColor] || THEME_COLORS['Green'];
-    document.documentElement.style.setProperty('--color-primary', color);
+    // FIX: Gunakan --primary bukan --color-primary agar sesuai dengan konfigurasi Tailwind di index.html
+    document.documentElement.style.setProperty('--primary', color);
+    
     const fonts = FONT_THEMES[siteSettings.themeFont] || FONT_THEMES['Default'];
     document.documentElement.style.setProperty('--font-heading', fonts.heading);
     document.documentElement.style.setProperty('--font-body', fonts.body);
+    
     if (siteSettings.faviconUrl) {
       let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
       if (!link) {
