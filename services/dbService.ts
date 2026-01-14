@@ -24,13 +24,10 @@ const NEON_HOST = getEnv('VITE_NEON_API_URL')
 
 const NEON_PASSWORD = getEnv('VITE_NEON_API_KEY');
 
-// Membentuk connection string yang valid untuk Neon Serverless Driver
-// Format: postgres://user:password@host/neondb
 const connectionString = NEON_HOST && NEON_PASSWORD 
   ? `postgres://neondb_owner:${NEON_PASSWORD}@${NEON_HOST}/neondb?sslmode=require`
   : '';
 
-// Inisialisasi driver SQL
 const sql = connectionString ? neon(connectionString) : null;
 
 const PRODUCTS_KEY = 'lumina_products';
@@ -84,7 +81,6 @@ export const dbService = {
   },
 
   async saveProduct(p: Product): Promise<void> {
-    // Simpan ke local storage dulu agar UI responsif
     const local = JSON.parse(localStorage.getItem(PRODUCTS_KEY) || '[]');
     const idx = local.findIndex((item: any) => item.id === p.id);
     if (idx >= 0) local[idx] = p; else local.push(p);
@@ -107,7 +103,7 @@ export const dbService = {
       `;
     } catch (e: any) {
       console.error('Neon SaveProduct Error:', e.message);
-      throw new Error("Gagal sinkronisasi ke Neon. Pastikan VITE_NEON_API_KEY adalah password 'npg_...' yang benar.");
+      throw e;
     }
   },
 
@@ -139,9 +135,11 @@ export const dbService = {
 
   async saveCSContact(c: CSContact): Promise<void> {
     if (!sql) return;
+    // Pastikan ID tersedia untuk menghindari not-null constraint error
+    const contactId = c.id || `cs_${Date.now()}`;
     await sql`
       INSERT INTO cs_contacts (id, name, phone_number, is_active)
-      VALUES (${c.id}, ${c.name}, ${c.phoneNumber}, ${c.isActive})
+      VALUES (${contactId}, ${c.name}, ${c.phoneNumber}, ${c.isActive})
       ON CONFLICT (id) DO UPDATE SET
         name = EXCLUDED.name, phone_number = EXCLUDED.phone_number, is_active = EXCLUDED.is_active;
     `;
@@ -170,9 +168,11 @@ export const dbService = {
 
   async saveTestimonial(t: Testimonial): Promise<void> {
     if (!sql) return;
+    // Pastikan ID tersedia untuk menghindari not-null constraint error
+    const testimonialId = t.id || `testi_${Date.now()}`;
     await sql`
       INSERT INTO testimonials (id, image_url, customer_name, is_active)
-      VALUES (${t.id}, ${t.imageUrl}, ${t.customerName || ''}, ${t.isActive})
+      VALUES (${testimonialId}, ${t.imageUrl}, ${t.customerName || ''}, ${t.isActive})
       ON CONFLICT (id) DO UPDATE SET
         image_url = EXCLUDED.image_url, customer_name = EXCLUDED.customer_name, is_active = EXCLUDED.is_active;
     `;
