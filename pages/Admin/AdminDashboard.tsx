@@ -152,8 +152,8 @@ const AdminDashboard: React.FC = () => {
             </div>
           </div>
           <div className="flex gap-3">
-            <button onClick={() => setShowGuide(!showGuide)} className="h-12 px-6 bg-primary/10 text-primary border border-primary/20 rounded-2xl font-black text-xs flex items-center gap-2 hover:bg-primary/20 transition-all">
-              <span className="material-symbols-outlined text-lg font-black">help_center</span> PANDUAN GAMBAR
+            <button onClick={() => setShowGuide(true)} className="h-12 px-6 bg-primary/10 text-primary border border-primary/20 rounded-2xl font-black text-xs flex items-center gap-2 hover:bg-primary/20 transition-all">
+              <span className="material-symbols-outlined text-lg font-black">help_center</span> PANDUAN GAMBAR/MEDIA
             </button>
             <button onClick={handleLogout} className="h-12 px-6 border-2 border-gray-100 dark:border-gray-800 rounded-2xl font-black text-xs hover:bg-red-500 hover:text-white transition-all">LOGOUT</button>
           </div>
@@ -613,6 +613,60 @@ const AdminDashboard: React.FC = () => {
                  </button>
                </form>
              )}
+          </div>
+        </div>
+      )}
+
+      {/* IMAGE GUIDE MODAL */}
+      {showGuide && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowGuide(false)}></div>
+          <div className="relative w-full max-w-2xl bg-white dark:bg-background-dark rounded-[40px] p-10 shadow-2xl overflow-y-auto max-h-[85vh] no-scrollbar">
+             <div className="flex justify-between items-center mb-8">
+                <div className="flex items-center gap-3">
+                   <span className="material-symbols-outlined text-primary font-black">help_center</span>
+                   <h2 className="text-2xl font-black tracking-tight">Panduan Ukuran & Upload Media</h2>
+                </div>
+                <button onClick={() => setShowGuide(false)} className="size-10 flex items-center justify-center rounded-full bg-gray-50 dark:bg-black/20 hover:bg-red-500 hover:text-white transition-colors">
+                   <span className="material-symbols-outlined text-sm">close</span>
+                </button>
+             </div>
+             
+             <div className="space-y-8 text-sm">
+                <div className="p-6 bg-gray-50 dark:bg-black/20 rounded-3xl border border-gray-100 dark:border-gray-800">
+                   <h4 className="font-black text-primary uppercase text-[10px] tracking-widest mb-3">Foto Produk Utama</h4>
+                   <p className="font-medium text-gray-500 dark:text-gray-400 mb-2">Rekomendasi rasio Portrait (4:5).</p>
+                   <p className="text-xs text-gray-400">Gunakan ukuran minimal 800 x 1000 px agar terlihat tajam di semua perangkat. Pastikan latar belakang bersih.</p>
+                </div>
+
+                <div className="p-6 bg-gray-50 dark:bg-black/20 rounded-3xl border border-gray-100 dark:border-gray-800">
+                   <h4 className="font-black text-primary uppercase text-[10px] tracking-widest mb-3">Hero / Banner Beranda</h4>
+                   <p className="font-medium text-gray-500 dark:text-gray-400 mb-2">Rekomendasi rasio Landscape (16:9).</p>
+                   <p className="text-xs text-gray-400">Gunakan ukuran minimal 1280 x 720 px. Pastikan bagian tengah gambar tidak terlalu ramai karena akan tertutup teks judul.</p>
+                </div>
+
+                <div className="p-6 bg-gray-50 dark:bg-black/20 rounded-3xl border border-gray-100 dark:border-gray-800">
+                   <h4 className="font-black text-primary uppercase text-[10px] tracking-widest mb-3">Foto Testimoni</h4>
+                   <p className="font-medium text-gray-500 dark:text-gray-400 mb-2">Rekomendasi rasio Portrait (4:5).</p>
+                   <p className="text-xs text-gray-400">Gunakan foto asli dari pelanggan. Ukuran 800 x 1000 px sudah sangat cukup.</p>
+                </div>
+
+                <div className="p-6 bg-gray-50 dark:bg-black/20 rounded-3xl border border-gray-100 dark:border-gray-800">
+                   <h4 className="font-black text-primary uppercase text-[10px] tracking-widest mb-3">Logo Website</h4>
+                   <p className="font-medium text-gray-500 dark:text-gray-400 mb-2">Rekomendasi file PNG Transparan atau SVG.</p>
+                   <p className="text-xs text-gray-400">Gunakan logo dengan latar belakang kosong agar menyatu dengan header transparan. Gunakan ukuran 250 x 100px hingga 400 x 100 px untuk format horizontal, atau sekitar 200 x 200 px untuk format persegi</p>
+                </div>
+
+                <div className="p-6 bg-gray-50 dark:bg-black/20 rounded-3xl border border-gray-100 dark:border-gray-800">
+                   <h4 className="font-black text-primary uppercase text-[10px] tracking-widest mb-3">Cara Upload Gambar</h4>
+                   <p className="font-medium text-gray-500 dark:text-gray-400 mb-2">Upload media dari perangkat atau Copy-paste link dari ImageKit.</p>
+                   <p className="text-xs text-gray-400">Cara pertama adalah upload gambar dari galeri/penyimpanan perangkat. Jika tidak berhasil, gunakan cara copy paste media dari ImageKit seperti yang dijelaskan dalam panduan (pdf) pembelian.</p>
+                </div>
+             </div>
+
+             <button onClick={() => setShowGuide(false)} className="w-full h-14 bg-primary text-black rounded-2xl font-black mt-8 hover:brightness-110 transition-all">
+                MENGERTI, TERIMA KASIH
+             </button>
           </div>
         </div>
       )}
