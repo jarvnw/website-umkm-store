@@ -54,7 +54,7 @@ export const TermsOfService: React.FC = () => {
 
           <section>
             <h2 className="text-2xl font-bold text-[#111811] dark:text-white mb-4">1. Ketentuan Umum</h2>
-            <p>LuminaGoods menyediakan platform katalog online untuk produk UMKM. Dengan mengakses website ini, Anda dianggap telah memahami dan menyetujui syarat dan ketentuan yang berlaku.</p>
+            <p>{siteSettings.siteName} menyediakan platform katalog online untuk produk UMKM. Dengan mengakses website ini, Anda dianggap telah memahami dan menyetujui syarat dan ketentuan yang berlaku.</p>
           </section>
 
           <section>
