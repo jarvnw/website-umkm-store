@@ -466,10 +466,20 @@ const App: React.FC = () => {
     }
   }, [siteSettings.faviconUrl]);
 
-  // Efek untuk update Judul Website secara dinamis
+  // Efek untuk update Judul Website & Meta SEO secara dinamis
   useEffect(() => {
     if (siteSettings.siteName) {
-      document.title = siteSettings.siteName;
+      const fullTitle = `${siteSettings.siteName} | Toko UMKM Berkualitas`;
+      // Update Tab Browser
+      document.title = fullTitle;
+      
+      // Update Meta Tags (Title)
+      const metaTitle = document.querySelector('meta[name="title"]');
+      if (metaTitle) metaTitle.setAttribute('content', fullTitle);
+      
+      // Update OpenGraph Title
+      const ogTitle = document.querySelector('meta[property="og:title"]');
+      if (ogTitle) ogTitle.setAttribute('content', fullTitle);
     }
   }, [siteSettings.siteName]);
 
