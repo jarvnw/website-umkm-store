@@ -14,11 +14,10 @@ import { PrivacyPolicy, TermsOfService } from './pages/LegalPages';
 
 // --- HELPER COMPONENTS ---
 
-// Komponen untuk memaksa scroll ke atas setiap kali pindah halaman
 const ScrollToTop = () => {
   const { pathname } = useLocation();
   useEffect(() => {
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [pathname]);
   return null;
 };
@@ -132,35 +131,46 @@ const ProductDetailPage: React.FC = () => {
   const [selectedVar, setSelectedVar] = useState<Variation | null>(null);
   const [activeMedia, setActiveMedia] = useState<number>(0);
 
+  // Pastikan halaman ini selalu scroll ke atas saat dibuka (Double protection)
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     if (product && product.variations?.length > 0) {
       setSelectedVar(product.variations[0]);
     }
-  }, [product]);
+  }, [product, id]);
+
+  const handleBack = () => {
+    // Logika navigasi cerdas untuk menghindari bug history kosong
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/products');
+    }
+  };
 
   if (!product) return <div className="p-20 text-center">Product not found.</div>;
 
   const allMedia = [product.coverMedia, ...(product.gallery || [])].filter(m => m && m.url);
 
   return (
-    <div className="px-4 md:px-10 lg:px-40 py-6 md:py-16 flex justify-center animate-in fade-in duration-700">
-      <div className="max-w-[1200px] w-full flex flex-col gap-6 md:gap-8">
+    <div className="px-4 md:px-10 lg:px-40 py-4 md:py-12 flex justify-center animate-in fade-in duration-700">
+      <div className="max-w-[1200px] w-full flex flex-col gap-4 md:gap-8">
         
-        {/* Navigation Bar - Tetap di Atas */}
+        {/* Navigation - Pill design for mobile focus */}
         <div className="flex items-center">
           <button 
-            onClick={() => navigate(-1)}
-            className="group flex items-center gap-3 text-[#111811] dark:text-white transition-all font-black text-xs uppercase tracking-[0.2em] bg-white dark:bg-[#1a2e1a] px-5 py-3 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 hover:text-primary hover:border-primary"
+            onClick={handleBack}
+            className="group flex items-center gap-2 text-[#111811] dark:text-white transition-all font-black text-[10px] md:text-xs uppercase tracking-[0.2em] bg-white/80 dark:bg-[#1a2e1a]/80 backdrop-blur-md px-4 py-2.5 md:px-6 md:py-3.5 rounded-full shadow-lg border border-gray-200 dark:border-gray-800 hover:text-primary hover:border-primary active:scale-95"
           >
-            <span className="material-symbols-outlined text-lg transition-transform group-hover:-translate-x-1">arrow_back</span>
-            Kembali Ke Galeri
+            <span className="material-symbols-outlined text-lg md:text-xl transition-transform group-hover:-translate-x-1">arrow_back</span>
+            Kembali
           </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-16 items-start">
-          {/* Media Section: Above the fold on mobile */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-16 items-start">
+          {/* Media Section */}
           <div className="flex flex-col gap-4">
-            <div className="rounded-[40px] overflow-hidden aspect-square bg-white dark:bg-black/20 relative border border-gray-100 dark:border-gray-800 shadow-2xl group">
+            <div className="rounded-[32px] md:rounded-[48px] overflow-hidden aspect-square bg-white dark:bg-black/20 relative border border-gray-100 dark:border-gray-800 shadow-2xl group">
               {allMedia[activeMedia]?.type === 'video' ? (
                 <video src={allMedia[activeMedia].url} className="w-full h-full object-cover" controls autoPlay loop muted />
               ) : (
@@ -190,38 +200,38 @@ const ProductDetailPage: React.FC = () => {
 
           {/* Details Section */}
           <div className="flex flex-col">
-            <div className="mb-8">
-              <span className="inline-block px-4 py-1.5 bg-primary/10 text-primary font-black text-[10px] tracking-[0.2em] uppercase rounded-full mb-4">
+            <div className="mb-6 md:mb-10">
+              <span className="inline-block px-3 py-1 bg-primary/10 text-primary font-black text-[9px] md:text-[10px] tracking-[0.2em] uppercase rounded-full mb-3 md:mb-4">
                 {product.category}
               </span>
-              <h1 className="text-4xl md:text-6xl font-black mb-4 leading-tight tracking-tight text-[#111811] dark:text-white">
+              <h1 className="text-3xl md:text-6xl font-black mb-3 leading-tight tracking-tight text-[#111811] dark:text-white">
                 {product.name}
               </h1>
-              <p className="text-3xl md:text-4xl font-black text-primary">
+              <p className="text-2xl md:text-4xl font-black text-primary">
                 Rp {(selectedVar?.price || product.price).toLocaleString('id-ID')}
               </p>
             </div>
 
-            <div className="bg-white dark:bg-[#1a2e1a] p-8 rounded-[32px] border border-gray-100 dark:border-gray-800 mb-8 shadow-sm">
-              <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4 flex items-center gap-2">
+            <div className="bg-white dark:bg-[#1a2e1a] p-6 md:p-8 rounded-[28px] md:rounded-[32px] border border-gray-100 dark:border-gray-800 mb-6 md:mb-8 shadow-sm">
+              <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 md:mb-4 flex items-center gap-2">
                 <span className="material-symbols-outlined text-sm">description</span> Detail Produk
               </h4>
-              <p className="text-gray-600 dark:text-gray-400 leading-relaxed text-lg whitespace-pre-line">
+              <p className="text-gray-600 dark:text-gray-400 leading-relaxed text-base md:text-lg whitespace-pre-line">
                 {product.description}
               </p>
             </div>
 
             {product.variations?.length > 0 && (
-              <div className="mb-10">
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4 flex items-center gap-2">
+              <div className="mb-8 md:mb-10">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 md:mb-4 flex items-center gap-2">
                   <span className="material-symbols-outlined text-sm">settings_input_component</span> Pilih Variasi
                 </h4>
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-2.5 md:gap-3">
                   {product.variations.map(v => (
                     <button 
                       key={v.id}
                       onClick={() => setSelectedVar(v)}
-                      className={`px-6 py-3 rounded-2xl font-bold border-2 transition-all flex flex-col gap-0.5 ${selectedVar?.id === v.id ? 'border-primary bg-primary text-black shadow-lg shadow-primary/20' : 'border-gray-200 dark:border-gray-800 text-gray-500 hover:border-primary/50'}`}
+                      className={`px-5 py-3 md:px-6 md:py-3.5 rounded-2xl font-bold border-2 transition-all flex flex-col gap-0.5 ${selectedVar?.id === v.id ? 'border-primary bg-primary text-black shadow-lg shadow-primary/20' : 'border-gray-100 dark:border-gray-800 text-gray-500 hover:border-primary/50'}`}
                     >
                       <span className="text-sm">{v.name}</span>
                       {v.stock <= 5 && v.stock > 0 && <span className="text-[8px] uppercase font-black opacity-70">Sisa {v.stock}</span>}
@@ -235,7 +245,7 @@ const ProductDetailPage: React.FC = () => {
             <button 
               onClick={() => addToCart(product, selectedVar || undefined)}
               disabled={selectedVar && selectedVar.stock <= 0}
-              className="flex items-center justify-center gap-4 bg-primary text-[#111811] h-16 md:h-20 rounded-[24px] text-xl font-black hover:scale-[1.02] transition-all shadow-2xl shadow-primary/30 disabled:opacity-50 disabled:scale-100 disabled:grayscale"
+              className="flex items-center justify-center gap-3 md:gap-4 bg-primary text-[#111811] h-14 md:h-20 rounded-[24px] text-lg md:text-xl font-black hover:scale-[1.02] transition-all shadow-2xl shadow-primary/30 disabled:opacity-50 disabled:scale-100 disabled:grayscale"
             >
               <span className="material-symbols-outlined font-black">add_shopping_cart</span>
               Tambah ke Keranjang
@@ -516,14 +526,11 @@ const App: React.FC = () => {
   useEffect(() => {
     if (siteSettings.siteName) {
       const fullTitle = `${siteSettings.siteName} | Pilihan Terbaik & Terpercaya`;
-      // Update Tab Browser
       document.title = fullTitle;
       
-      // Update Meta Tags (Title)
       const metaTitle = document.querySelector('meta[name="title"]');
       if (metaTitle) metaTitle.setAttribute('content', fullTitle);
       
-      // Update OpenGraph Title
       const ogTitle = document.querySelector('meta[property="og:title"]');
       if (ogTitle) ogTitle.setAttribute('content', fullTitle);
     }
