@@ -466,6 +466,13 @@ const App: React.FC = () => {
     }
   }, [siteSettings.faviconUrl]);
 
+  // Efek untuk update Judul Website secara dinamis
+  useEffect(() => {
+    if (siteSettings.siteName) {
+      document.title = siteSettings.siteName;
+    }
+  }, [siteSettings.siteName]);
+
   useEffect(() => {
     localStorage.setItem('lumina_cart', JSON.stringify(cart));
   }, [cart]);
