@@ -469,7 +469,7 @@ const App: React.FC = () => {
   // Efek untuk update Judul Website & Meta SEO secara dinamis
   useEffect(() => {
     if (siteSettings.siteName) {
-      const fullTitle = `${siteSettings.siteName} | Toko UMKM Berkualitas`;
+      const fullTitle = `${siteSettings.siteName} | Pilihan Terbaik & Terpercaya`;
       // Update Tab Browser
       document.title = fullTitle;
       
