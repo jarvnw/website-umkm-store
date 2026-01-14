@@ -115,6 +115,7 @@ const HomePage: React.FC = () => {
 
 const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { products, addToCart } = useStore();
   const product = products.find(p => p.id === id);
   const [selectedVar, setSelectedVar] = useState<Variation | null>(null);
@@ -131,70 +132,104 @@ const ProductDetailPage: React.FC = () => {
   const allMedia = [product.coverMedia, ...(product.gallery || [])].filter(m => m && m.url);
 
   return (
-    <div className="px-4 md:px-10 lg:px-40 py-20 flex justify-center">
-      <div className="max-w-[1200px] w-full grid grid-cols-1 lg:grid-cols-2 gap-16">
-        <div className="flex flex-col gap-4">
-          <div className="rounded-3xl overflow-hidden aspect-square bg-gray-50 dark:bg-black/20 relative border border-gray-100 dark:border-gray-800">
-            {allMedia[activeMedia]?.type === 'video' ? (
-              <video src={allMedia[activeMedia].url} className="w-full h-full object-cover" controls autoPlay loop muted />
-            ) : (
-              <img src={allMedia[activeMedia]?.url || product.image} alt={product.name} className="w-full h-full object-cover" />
-            )}
-          </div>
-          <div className="grid grid-cols-5 gap-4">
-            {allMedia.map((m, i) => (
-              <button 
-                key={i} 
-                onClick={() => setActiveMedia(i)}
-                className={`aspect-square rounded-xl overflow-hidden border-2 transition-all ${activeMedia === i ? 'border-primary' : 'border-transparent'}`}
-              >
-                {m.type === 'video' ? (
-                  <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-xs">play_circle</span>
-                  </div>
-                ) : (
-                  <img src={m.url} className="w-full h-full object-cover" />
-                )}
-              </button>
-            ))}
-          </div>
+    <div className="px-4 md:px-10 lg:px-40 py-10 md:py-20 flex justify-center animate-in fade-in duration-700">
+      <div className="max-w-[1200px] w-full flex flex-col gap-6 md:gap-10">
+        
+        {/* Navigation Row */}
+        <div className="flex items-center">
+          <button 
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-gray-500 hover:text-primary transition-colors font-black text-xs uppercase tracking-widest"
+          >
+            <span className="material-symbols-outlined text-lg">arrow_back</span>
+            Kembali
+          </button>
         </div>
 
-        <div className="flex flex-col justify-center">
-          <span className="text-primary font-black text-sm tracking-widest uppercase mb-4">{product.category}</span>
-          <h1 className="text-5xl font-black mb-8 leading-tight tracking-tight">{product.name}</h1>
-          
-          <p className="text-4xl font-black text-primary mb-10">
-            Rp {(selectedVar?.price || product.price).toLocaleString('id-ID')}
-          </p>
-
-          <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-10 text-lg">{product.description}</p>
-
-          {product.variations?.length > 0 && (
-            <div className="mb-10">
-              <h4 className="text-sm font-black uppercase tracking-widest mb-4">Choose Variation</h4>
-              <div className="flex flex-wrap gap-3">
-                {product.variations.map(v => (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-16 items-start">
+          {/* Left Side: Media Gallery */}
+          <div className="flex flex-col gap-4">
+            <div className="rounded-[40px] overflow-hidden aspect-square bg-gray-50 dark:bg-black/20 relative border border-gray-100 dark:border-gray-800 shadow-xl group">
+              {allMedia[activeMedia]?.type === 'video' ? (
+                <video src={allMedia[activeMedia].url} className="w-full h-full object-cover" controls autoPlay loop muted />
+              ) : (
+                <img src={allMedia[activeMedia]?.url || product.image} alt={product.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+              )}
+            </div>
+            {allMedia.length > 1 && (
+              <div className="grid grid-cols-5 gap-3 md:gap-4 px-2">
+                {allMedia.map((m, i) => (
                   <button 
-                    key={v.id}
-                    onClick={() => setSelectedVar(v)}
-                    className={`px-6 py-3 rounded-xl font-bold border-2 transition-all ${selectedVar?.id === v.id ? 'border-primary bg-primary/10 text-primary' : 'border-gray-200 dark:border-gray-800'}`}
+                    key={i} 
+                    onClick={() => setActiveMedia(i)}
+                    className={`aspect-square rounded-2xl overflow-hidden border-2 transition-all shadow-sm ${activeMedia === i ? 'border-primary ring-4 ring-primary/10' : 'border-transparent opacity-60 hover:opacity-100'}`}
                   >
-                    {v.name} {v.stock > 0 ? '' : '(Out of Stock)'}
+                    {m.type === 'video' ? (
+                      <div className="w-full h-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center">
+                        <span className="material-symbols-outlined text-primary">play_circle</span>
+                      </div>
+                    ) : (
+                      <img src={m.url} className="w-full h-full object-cover" />
+                    )}
                   </button>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
-          <button 
-            onClick={() => addToCart(product, selectedVar || undefined)}
-            disabled={selectedVar && selectedVar.stock <= 0}
-            className="flex items-center justify-center gap-4 bg-primary text-[#111811] h-16 rounded-2xl text-xl font-black hover:scale-105 transition-all shadow-2xl shadow-primary/20 disabled:opacity-50 disabled:scale-100"
-          >
-            <span className="material-symbols-outlined font-black">add_shopping_cart</span>
-            Add to Shopping Cart
-          </button>
+          {/* Right Side: Product Details */}
+          <div className="flex flex-col">
+            <div className="mb-8">
+              <span className="inline-block px-4 py-1.5 bg-primary/10 text-primary font-black text-[10px] tracking-[0.2em] uppercase rounded-full mb-4">
+                {product.category}
+              </span>
+              <h1 className="text-4xl md:text-6xl font-black mb-4 leading-tight tracking-tight text-[#111811] dark:text-white">
+                {product.name}
+              </h1>
+              <p className="text-3xl md:text-4xl font-black text-primary">
+                Rp {(selectedVar?.price || product.price).toLocaleString('id-ID')}
+              </p>
+            </div>
+
+            <div className="bg-gray-50/50 dark:bg-white/5 p-8 rounded-[32px] border border-gray-100 dark:border-gray-800 mb-8">
+              <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4 flex items-center gap-2">
+                <span className="material-symbols-outlined text-sm">description</span> Deskripsi Produk
+              </h4>
+              <p className="text-gray-600 dark:text-gray-400 leading-relaxed text-lg whitespace-pre-line">
+                {product.description}
+              </p>
+            </div>
+
+            {product.variations?.length > 0 && (
+              <div className="mb-10">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-sm">settings_input_component</span> Pilih Variasi
+                </h4>
+                <div className="flex flex-wrap gap-3">
+                  {product.variations.map(v => (
+                    <button 
+                      key={v.id}
+                      onClick={() => setSelectedVar(v)}
+                      className={`px-6 py-3 rounded-2xl font-bold border-2 transition-all flex flex-col gap-0.5 ${selectedVar?.id === v.id ? 'border-primary bg-primary text-black' : 'border-gray-200 dark:border-gray-800 text-gray-500 hover:border-primary/50'}`}
+                    >
+                      <span className="text-sm">{v.name}</span>
+                      {v.stock <= 5 && v.stock > 0 && <span className="text-[8px] uppercase font-black opacity-70">Sisa {v.stock}</span>}
+                      {v.stock === 0 && <span className="text-[8px] uppercase font-black opacity-70">Stok Habis</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <button 
+              onClick={() => addToCart(product, selectedVar || undefined)}
+              disabled={selectedVar && selectedVar.stock <= 0}
+              className="flex items-center justify-center gap-4 bg-primary text-[#111811] h-16 md:h-20 rounded-[24px] text-xl font-black hover:scale-[1.02] transition-all shadow-2xl shadow-primary/20 disabled:opacity-50 disabled:scale-100 disabled:grayscale"
+            >
+              <span className="material-symbols-outlined font-black">add_shopping_cart</span>
+              Tambah ke Keranjang
+            </button>
+          </div>
         </div>
       </div>
     </div>
