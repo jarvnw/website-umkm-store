@@ -5,24 +5,18 @@ import { dbService } from '../../services/dbService';
 import { Product, CSContact, Media, Variation, SiteSettings, Testimonial, AdminCredentials } from '../../types';
 import { useStore } from '../../App';
 
-// Fungsi helper untuk mengambil environment variable secara aman
 const getEnv = (key: string): string => {
-  try {
-    if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
-      return (import.meta as any).env[key] || '';
-    }
-    if (typeof process !== 'undefined' && process.env) {
-      return process.env[key] || '';
-    }
-  } catch (e) {}
+  // @ts-ignore
+  if (import.meta.env && import.meta.env[key]) return import.meta.env[key];
+  // @ts-ignore
+  if (typeof process !== 'undefined' && process.env && process.env[key]) return process.env[key];
   return '';
 };
 
 const IK_PUBLIC_KEY = getEnv('VITE_IMAGEKIT_PUBLIC_KEY');
-const IK_URL_ENDPOINT = getEnv('VITE_IMAGEKIT_URL_ENDPOINT');
 
 const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'products' | 'cs' | 'site' | 'testimonials' | 'security'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'site' | 'cs' | 'testimonials' | 'security'>('products');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
   const [editingCS, setEditingCS] = useState<Partial<CSContact> | null>(null);
@@ -30,7 +24,8 @@ const AdminDashboard: React.FC = () => {
   const [localSettings, setLocalSettings] = useState<SiteSettings | null>(null);
   const [adminCreds, setAdminCreds] = useState<AdminCredentials>({ username: '', password: '' });
   const [isUploading, setIsUploading] = useState(false);
-  
+  const [showGuide, setShowGuide] = useState(false);
+
   const navigate = useNavigate();
   const { refreshData, products, csContacts, siteSettings, testimonials } = useStore();
 
@@ -48,109 +43,40 @@ const AdminDashboard: React.FC = () => {
 
   const uploadToImageKit = async (file: File): Promise<string> => {
     if (!IK_PUBLIC_KEY) {
-      alert(`Error: VITE_IMAGEKIT_PUBLIC_KEY tidak terbaca.`);
+      alert("Public Key ImageKit belum dikonfigurasi.");
       throw new Error('Missing Public Key');
     }
-    
     setIsUploading(true);
     try {
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('fileName', file.name || `upload_${Date.now()}`);
+      formData.append('fileName', file.name || `img_${Date.now()}`);
       formData.append('publicKey', IK_PUBLIC_KEY);
       formData.append('useUniqueFileName', 'true');
-
-      // Mengirim request ke ImageKit
       const response = await fetch('https://upload.imagekit.io/api/v1/files/upload', {
         method: 'POST',
         body: formData,
       });
-
       const result = await response.json();
-
-      if (!response.ok) {
-        // Jika gagal, berikan info spesifik dari ImageKit
-        const errorMsg = result.message || 'Error tidak dikenal';
-        console.error('ImageKit Upload Error:', result);
-        
-        if (errorMsg.includes('unsigned upload')) {
-          alert('GAGAL: Anda belum mengaktifkan "Unsigned Upload" di Dashboard ImageKit.\n\nCara Aktifkan:\n1. Buka Dashboard ImageKit\n2. Klik Icon Gerigi (Settings)\n3. Pilih "Security" -> "Upload Policy"\n4. Centang "Allow Unsigned Upload"\n5. Klik Save.');
-        } else if (errorMsg.includes('origin')) {
-          alert(`GAGAL: Domain ini belum diizinkan.\n\nCara Fix:\n1. Buka Dashboard ImageKit -> Settings -> Security\n2. Masukkan domain website Anda di bagian "Allowed Origins"\n3. Klik Save.`);
-        } else {
-          alert(`Error ImageKit: ${errorMsg}`);
-        }
-        throw new Error(errorMsg);
-      }
-
+      if (!response.ok) throw new Error(result.message || 'Gagal');
       return result.url;
     } catch (error: any) {
-      console.error('Fetch Error:', error);
-      if (!error.message.includes('unsigned upload')) {
-        alert('Gagal mengunggah. Pastikan koneksi internet stabil dan pengaturan ImageKit sudah benar.');
-      }
+      alert(`Gagal: ${error.message}\n\nGunakan "URL Gambar Manual" jika upload bermasalah.`);
       throw error;
     } finally {
       setIsUploading(false);
     }
   };
 
-  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>, isCover: boolean, index?: number) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const url = await uploadToImageKit(file);
-      const media: Media = { type: file.type.startsWith('video') ? 'video' : 'image', url };
-      if (isCover) setEditingProduct(prev => ({ ...prev, coverMedia: media, image: url }));
-      else setEditingProduct(prev => {
-        const gallery = [...(prev?.gallery || [])];
-        if (index !== undefined) gallery[index] = media;
-        else gallery.push(media);
-        return { ...prev, gallery };
-      });
-    } catch (err) {}
-  };
-
-  const removeGalleryMedia = (index: number) => {
-    setEditingProduct(prev => {
-      const gallery = [...(prev?.gallery || [])];
-      gallery.splice(index, 1);
-      return { ...prev, gallery };
-    });
-  };
-
-  const handleAddVariation = () => {
-    const newVar: Variation = { id: Date.now().toString(), name: '', price: 0, stock: 10 };
-    setEditingProduct(prev => ({
-      ...prev,
-      variations: [...(prev?.variations || []), newVar]
-    }));
-  };
-
-  const updateVariation = (id: string, field: keyof Variation, value: any) => {
-    setEditingProduct(prev => ({
-      ...prev,
-      variations: prev?.variations?.map(v => v.id === id ? { ...v, [field]: value } : v)
-    }));
-  };
-
-  const removeVariation = (id: string) => {
-    setEditingProduct(prev => ({
-      ...prev,
-      variations: prev?.variations?.filter(v => v.id !== id)
-    }));
-  };
-
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProduct) return;
-    const basePrice = editingProduct.variations?.[0]?.price || Number(editingProduct.price) || 0;
     const product: Product = {
       id: editingProduct.id || Date.now().toString(),
       name: editingProduct.name || '',
       description: editingProduct.description || '',
-      price: basePrice,
-      category: editingProduct.category || 'General',
+      price: editingProduct.variations?.[0]?.price || Number(editingProduct.price) || 0,
+      category: editingProduct.category || 'Umum',
       image: editingProduct.coverMedia?.url || editingProduct.image || '',
       coverMedia: editingProduct.coverMedia || { type: 'image', url: '' },
       gallery: editingProduct.gallery || [],
@@ -164,263 +90,291 @@ const AdminDashboard: React.FC = () => {
     setEditingProduct(null);
   };
 
-  const handleSaveCS = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingCS) return;
-    const contact: CSContact = {
-      id: editingCS.id || Date.now().toString(),
-      name: editingCS.name || '',
-      phoneNumber: editingCS.phoneNumber || '',
-      isActive: editingCS.isActive ?? true
-    };
-    await dbService.saveCSContact(contact);
-    refreshData();
-    setIsModalOpen(false);
-    setEditingCS(null);
-  };
-
-  const handleSaveTestimonial = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingTestimonial) return;
-    const testimonial: Testimonial = {
-      id: editingTestimonial.id || Date.now().toString(),
-      imageUrl: editingTestimonial.imageUrl || '',
-      customerName: editingTestimonial.customerName,
-      isActive: editingTestimonial.isActive ?? true
-    };
-    await dbService.saveTestimonial(testimonial);
-    refreshData();
-    setIsModalOpen(false);
-    setEditingTestimonial(null);
-  };
+  const SectionHeader = ({ title, icon }: { title: string, icon: string }) => (
+    <div className="flex items-center gap-3 mb-6 mt-10 border-b-2 border-primary/10 pb-4">
+      <span className="material-symbols-outlined text-primary">{icon}</span>
+      <h3 className="text-sm font-black uppercase tracking-[0.2em]">{title}</h3>
+    </div>
+  );
 
   return (
     <div className="px-4 md:px-10 lg:px-40 py-10 min-h-screen">
       <div className="max-w-[1200px] mx-auto">
         <div className="flex flex-col md:flex-row items-center justify-between mb-10 gap-6">
-          <div>
-            <h1 className="text-4xl font-black tracking-tighter">Admin Panel</h1>
-            <p className="text-gray-400 mt-1 font-medium uppercase text-xs tracking-widest">Store Management</p>
+          <div className="flex items-center gap-4">
+            <div className="size-12 bg-primary text-black rounded-2xl flex items-center justify-center">
+              <span className="material-symbols-outlined text-3xl font-black">storefront</span>
+            </div>
+            <div>
+              <h1 className="text-4xl font-black tracking-tighter">Pengaturan Toko</h1>
+              <p className="text-gray-400 font-bold uppercase text-[10px] tracking-[0.2em] mt-1">Control Panel v2.0</p>
+            </div>
           </div>
-          <div className="flex gap-4">
-            {activeTab === 'products' && (
-              <button onClick={() => { setEditingProduct({ gallery: [], variations: [], isFeatured: false }); setIsModalOpen(true); }} className="h-12 px-6 bg-primary text-[#111811] rounded-xl font-black flex items-center gap-2 hover:scale-105 transition-all shadow-lg shadow-primary/20">
-                <span className="material-symbols-outlined">add</span> Produk Baru
-              </button>
-            )}
-            <button onClick={handleLogout} className="h-12 px-6 border border-gray-200 dark:border-gray-800 rounded-xl font-bold hover:bg-red-50 hover:text-red-500 transition-all">Logout</button>
+          <div className="flex gap-3">
+            <button onClick={() => setShowGuide(!showGuide)} className="h-12 px-6 bg-primary/10 text-primary border border-primary/20 rounded-2xl font-black text-xs flex items-center gap-2 hover:bg-primary/20 transition-all">
+              <span className="material-symbols-outlined text-lg">help_center</span> PANDUAN GAMBAR
+            </button>
+            <button onClick={handleLogout} className="h-12 px-6 border-2 border-gray-100 dark:border-gray-800 rounded-2xl font-black text-xs hover:bg-red-500 hover:text-white transition-all">LOGOUT</button>
           </div>
         </div>
 
-        <div className="flex border-b border-gray-200 dark:border-gray-800 mb-8 overflow-x-auto no-scrollbar">
-          {['products', 'testimonials', 'cs', 'site', 'security'].map(tab => (
-            <button key={tab} className={`px-8 py-4 font-black text-sm uppercase tracking-widest whitespace-nowrap transition-all ${activeTab === tab ? 'border-b-4 border-primary text-primary' : 'text-gray-400 hover:text-gray-600'}`} onClick={() => setActiveTab(tab as any)}>
-              {tab === 'products' ? 'Produk' : tab === 'testimonials' ? 'Testimoni' : tab === 'cs' ? 'CS' : tab === 'site' ? 'Situs' : 'Keamanan'}
+        {showGuide && (
+          <div className="mb-10 bg-white dark:bg-[#1a2e1a] border-2 border-primary/20 rounded-[32px] p-8 shadow-2xl animate-in fade-in slide-in-from-top-4 duration-500">
+            <div className="flex items-start gap-6 text-sm">
+               <div className="size-12 rounded-2xl bg-primary text-black flex items-center justify-center shrink-0"><span className="material-symbols-outlined">lightbulb</span></div>
+               <div>
+                  <h4 className="font-black text-lg mb-2">Tips Mengelola Gambar:</h4>
+                  <p className="text-gray-500 font-medium mb-4">Jika tombol upload (ikon foto) tidak bekerja di environment Anda, silakan gunakan <b>URL Gambar Manual</b>. Anda bisa mengunggah foto ke layanan seperti <a href="https://postimages.org/" target="_blank" className="text-primary underline">PostImages</a> lalu menempelkan <b>Direct Link</b>-nya di kolom yang tersedia.</p>
+               </div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex border-b border-gray-100 dark:border-gray-800 mb-8 overflow-x-auto no-scrollbar gap-2">
+          {[
+            { id: 'products', label: 'Produk' },
+            { id: 'site', label: 'Tampilan' },
+            { id: 'cs', label: 'Admin WA' },
+            { id: 'testimonials', label: 'Testimoni' },
+            { id: 'security', label: 'Akses' }
+          ].map(tab => (
+            <button key={tab.id} className={`px-8 py-4 font-black text-xs uppercase tracking-[0.1em] transition-all relative whitespace-nowrap ${activeTab === tab.id ? 'text-primary' : 'text-gray-400 hover:text-gray-600'}`} onClick={() => setActiveTab(tab.id as any)}>
+              {tab.label}
+              {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-full"></div>}
             </button>
           ))}
         </div>
 
         {activeTab === 'products' ? (
           <div className="grid grid-cols-1 gap-4">
+            <button onClick={() => { setEditingProduct({ gallery: [], variations: [], isFeatured: false }); setIsModalOpen(true); }} className="group p-10 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-[40px] flex flex-col items-center justify-center hover:border-primary hover:bg-primary/5 transition-all">
+               <span className="material-symbols-outlined text-5xl text-gray-300 group-hover:text-primary transition-colors mb-2">add_circle</span>
+               <p className="font-black uppercase text-xs tracking-widest text-gray-400 group-hover:text-primary">Produk Baru</p>
+            </button>
             {products.map(p => (
-              <div key={p.id} className="bg-white dark:bg-[#1a2e1a] p-5 rounded-3xl flex flex-col md:flex-row items-center gap-6 border border-gray-100 dark:border-gray-800 shadow-sm">
-                <img src={p.coverMedia?.url || p.image} className="size-24 shrink-0 rounded-2xl object-cover bg-gray-50 dark:bg-black/20" />
+              <div key={p.id} className="bg-white dark:bg-[#1a2e1a] p-6 rounded-[32px] flex items-center gap-6 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-all">
+                <div className="size-20 shrink-0 rounded-2xl overflow-hidden bg-gray-50 dark:bg-black/40">
+                  <img src={p.coverMedia?.url || p.image} className="w-full h-full object-cover" />
+                </div>
                 <div className="flex-1">
-                  <h4 className="text-xl font-black">{p.name}</h4>
-                  <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">{p.category}</p>
-                  <p className="text-primary font-black text-lg mt-1">Rp {p.price.toLocaleString('id-ID')}</p>
+                  <h4 className="text-lg font-black">{p.name}</h4>
+                  <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em]">{p.category}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => { setEditingProduct(p); setIsModalOpen(true); }} className="p-4 bg-gray-50 dark:bg-black/20 rounded-2xl hover:text-primary transition-all"><span className="material-symbols-outlined">edit</span></button>
-                  <button onClick={() => { if(confirm('Hapus produk ini?')) dbService.deleteProduct(p.id).then(refreshData) }} className="p-4 bg-gray-50 dark:bg-black/20 rounded-2xl hover:text-red-500 transition-all"><span className="material-symbols-outlined">delete</span></button>
+                  <button onClick={() => { setEditingProduct(p); setIsModalOpen(true); }} className="size-12 bg-gray-50 dark:bg-black/20 rounded-xl hover:text-primary flex items-center justify-center"><span className="material-symbols-outlined">edit</span></button>
+                  <button onClick={() => { if(confirm('Hapus produk?')) dbService.deleteProduct(p.id).then(refreshData) }} className="size-12 bg-gray-50 dark:bg-black/20 rounded-xl hover:text-red-500 flex items-center justify-center"><span className="material-symbols-outlined">delete</span></button>
                 </div>
               </div>
             ))}
           </div>
-        ) : activeTab === 'testimonials' ? (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-            <button onClick={() => { setEditingTestimonial({ isActive: true }); setIsModalOpen(true); }} className="flex flex-col items-center justify-center aspect-[3/4] rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-800 hover:border-primary text-gray-400 hover:text-primary transition-all">
-              <span className="material-symbols-outlined text-4xl mb-2">add_photo_alternate</span>
-              <p className="text-[10px] font-black uppercase">Tambah</p>
-            </button>
-            {testimonials.map(t => (
-              <div key={t.id} className="relative bg-white dark:bg-[#1a2e1a] rounded-3xl border border-gray-100 dark:border-gray-800 overflow-hidden group">
-                <img src={t.imageUrl} className="w-full aspect-[3/4] object-cover" />
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                   <button onClick={() => { setEditingTestimonial(t); setIsModalOpen(true); }} className="size-12 bg-white text-black rounded-full flex items-center justify-center"><span className="material-symbols-outlined">edit</span></button>
-                   <button onClick={() => { if(confirm('Hapus?')) dbService.deleteTestimonial(t.id).then(refreshData) }} className="size-12 bg-red-500 text-white rounded-full flex items-center justify-center"><span className="material-symbols-outlined">delete</span></button>
+        ) : activeTab === 'site' ? (
+          <div className="bg-white dark:bg-[#1a2e1a] p-6 md:p-12 rounded-[40px] border border-gray-100 dark:border-gray-800 max-w-5xl mx-auto shadow-sm">
+             <form onSubmit={e => { e.preventDefault(); if(localSettings) dbService.saveSiteSettings(localSettings).then(() => { refreshData(); alert('Berhasil disimpan!'); }); }} className="flex flex-col gap-4">
+                
+                <SectionHeader title="Umum & Hero" icon="home" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Nama Toko</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.siteName} onChange={e => localSettings && setLocalSettings({...localSettings, siteName: e.target.value})} /></div>
+                  <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">URL Logo</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.logoUrl} onChange={e => localSettings && setLocalSettings({...localSettings, logoUrl: e.target.value})} /></div>
+                  <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Headline Hero (Judul Besar)</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.heroTitle} onChange={e => localSettings && setLocalSettings({...localSettings, heroTitle: e.target.value})} /></div>
+                  <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Subtitle Hero</label><textarea className="h-24 border-2 rounded-2xl p-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold resize-none" value={localSettings?.heroSubtitle} onChange={e => localSettings && setLocalSettings({...localSettings, heroSubtitle: e.target.value})} /></div>
+                  <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">URL Gambar Hero</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.heroImage} onChange={e => localSettings && setLocalSettings({...localSettings, heroImage: e.target.value})} /></div>
                 </div>
-              </div>
-            ))}
+
+                <SectionHeader title="About Us Page" icon="info" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                   <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Header Title</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.aboutHeaderTitle} onChange={e => localSettings && setLocalSettings({...localSettings, aboutHeaderTitle: e.target.value})} /></div>
+                   <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Header Description</label><textarea className="h-24 border-2 rounded-2xl p-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold resize-none" value={localSettings?.aboutHeaderDesc} onChange={e => localSettings && setLocalSettings({...localSettings, aboutHeaderDesc: e.target.value})} /></div>
+                   <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Section Content Title</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.aboutSectionTitle} onChange={e => localSettings && setLocalSettings({...localSettings, aboutSectionTitle: e.target.value})} /></div>
+                   <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">URL Gambar Section</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.aboutSectionImage} onChange={e => localSettings && setLocalSettings({...localSettings, aboutSectionImage: e.target.value})} /></div>
+                   <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Section Content Description</label><textarea className="h-32 border-2 rounded-2xl p-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold resize-none" value={localSettings?.aboutSectionDesc} onChange={e => localSettings && setLocalSettings({...localSettings, aboutSectionDesc: e.target.value})} /></div>
+                </div>
+
+                <SectionHeader title="Contact & Social Media" icon="contact_support" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                   <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Email</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.contactEmail} onChange={e => localSettings && setLocalSettings({...localSettings, contactEmail: e.target.value})} /></div>
+                   <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Telepon/WA Utama</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.contactPhone} onChange={e => localSettings && setLocalSettings({...localSettings, contactPhone: e.target.value})} /></div>
+                   <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Alamat Lengkap</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.contactAddress} onChange={e => localSettings && setLocalSettings({...localSettings, contactAddress: e.target.value})} /></div>
+                   <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Instagram URL</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.instagramUrl} onChange={e => localSettings && setLocalSettings({...localSettings, instagramUrl: e.target.value})} /></div>
+                   <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">TikTok URL</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.tiktokUrl} onChange={e => localSettings && setLocalSettings({...localSettings, tiktokUrl: e.target.value})} /></div>
+                   <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Facebook URL</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.facebookUrl} onChange={e => localSettings && setLocalSettings({...localSettings, facebookUrl: e.target.value})} /></div>
+                   <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">YouTube URL</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold" value={localSettings?.youtubeUrl} onChange={e => localSettings && setLocalSettings({...localSettings, youtubeUrl: e.target.value})} /></div>
+                </div>
+
+                <SectionHeader title="Footer" icon="branding_watermark" />
+                <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Deskripsi Footer (Muncul di Bawah Logo Footer)</label><textarea className="h-28 border-2 rounded-2xl p-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold resize-none" value={localSettings?.footerDescription} onChange={e => localSettings && setLocalSettings({...localSettings, footerDescription: e.target.value})} /></div>
+
+                <button className="h-16 bg-primary text-[#111811] rounded-2xl font-black text-lg shadow-xl shadow-primary/20 mt-10 hover:scale-[1.01] transition-transform">SIMPAN SELURUH KONFIGURASI SITUS</button>
+             </form>
           </div>
         ) : activeTab === 'cs' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             <button onClick={() => { setEditingCS({ isActive: true }); setIsModalOpen(true); }} className="p-8 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-3xl text-gray-400 hover:border-primary hover:text-primary transition-all">
-               <span className="material-symbols-outlined text-4xl">person_add</span>
-               <p className="font-black mt-2">Tambah CS</p>
+             <button onClick={() => { setEditingCS({ isActive: true }); setIsModalOpen(true); }} className="p-8 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-[32px] text-gray-400 hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-4">
+               <span className="material-symbols-outlined">add_moderator</span>
+               <p className="font-black text-xs uppercase tracking-widest">Tambah Nomor CS Baru</p>
              </button>
              {csContacts.map(c => (
-               <div key={c.id} className="bg-white dark:bg-[#1a2e1a] p-6 rounded-3xl flex items-center justify-between border border-gray-100 dark:border-gray-800">
-                 <div><h4 className="font-black text-lg">{c.name}</h4><p className="text-gray-400">+{c.phoneNumber}</p></div>
-                 <div className="flex gap-2">
-                    <button onClick={() => { setEditingCS(c); setIsModalOpen(true); }} className="p-3 hover:text-primary"><span className="material-symbols-outlined">edit</span></button>
-                    <button onClick={() => { if(confirm('Hapus?')) dbService.deleteCSContact(c.id).then(refreshData) }} className="p-3 hover:text-red-500"><span className="material-symbols-outlined">delete</span></button>
+               <div key={c.id} className="bg-white dark:bg-[#1a2e1a] p-6 rounded-[32px] flex items-center justify-between border border-gray-100 dark:border-gray-800 shadow-sm">
+                 <div className="flex items-center gap-4">
+                    <div className="size-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-black">WA</div>
+                    <div>
+                      <h4 className="font-black text-lg">{c.name}</h4>
+                      <p className="text-gray-400 font-bold">+{c.phoneNumber}</p>
+                    </div>
+                 </div>
+                 <div className="flex gap-1">
+                    <button onClick={() => { setEditingCS(c); setIsModalOpen(true); }} className="size-10 flex items-center justify-center hover:text-primary transition-colors"><span className="material-symbols-outlined">edit</span></button>
+                    <button onClick={() => { if(confirm('Hapus kontak?')) dbService.deleteCSContact(c.id).then(refreshData) }} className="size-10 flex items-center justify-center hover:text-red-500 transition-colors"><span className="material-symbols-outlined">delete</span></button>
                  </div>
                </div>
              ))}
           </div>
-        ) : activeTab === 'security' ? (
-          <div className="max-w-md mx-auto bg-white dark:bg-[#1a2e1a] p-10 rounded-[40px] border border-gray-100 dark:border-gray-800">
-             <h3 className="text-2xl font-black mb-6 text-center">Update Password</h3>
-             <form onSubmit={e => { e.preventDefault(); dbService.saveAdminCredentials(adminCreds).then(() => alert('Tersimpan!')); }} className="flex flex-col gap-6">
-                <input required className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 focus:border-primary outline-none font-bold" value={adminCreds.username} onChange={e => setAdminCreds({...adminCreds, username: e.target.value})} placeholder="Username" />
-                <input required type="password" className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 focus:border-primary outline-none font-bold" value={adminCreds.password} onChange={e => setAdminCreds({...adminCreds, password: e.target.value})} placeholder="Password Baru" />
-                <button className="h-16 bg-primary text-[#111811] rounded-2xl font-black text-lg shadow-xl shadow-primary/20">Simpan Kredensial</button>
-             </form>
+        ) : activeTab === 'testimonials' ? (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            <button onClick={() => { setEditingTestimonial({ isActive: true }); setIsModalOpen(true); }} className="flex flex-col items-center justify-center aspect-[3/4] rounded-[32px] border-2 border-dashed border-gray-200 dark:border-gray-800 hover:border-primary text-gray-400 hover:text-primary transition-all">
+              <span className="material-symbols-outlined text-4xl mb-2">add_a_photo</span>
+              <p className="text-[10px] font-black uppercase">Tambah Review</p>
+            </button>
+            {testimonials.map(t => (
+              <div key={t.id} className="relative aspect-[3/4] rounded-[32px] border border-gray-100 dark:border-gray-800 overflow-hidden group shadow-sm">
+                <img src={t.imageUrl} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4 backdrop-blur-sm">
+                   <button onClick={() => { setEditingTestimonial(t); setIsModalOpen(true); }} className="size-12 bg-white text-black rounded-full flex items-center justify-center shadow-lg"><span className="material-symbols-outlined">edit</span></button>
+                   <button onClick={() => { if(confirm('Hapus testimoni?')) dbService.deleteTestimonial(t.id).then(refreshData) }} className="size-12 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg"><span className="material-symbols-outlined">delete</span></button>
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
-          <div className="max-w-4xl mx-auto bg-white dark:bg-[#1a2e1a] p-10 rounded-[40px] border border-gray-100 dark:border-gray-800">
-             <form onSubmit={e => { e.preventDefault(); if(localSettings) dbService.saveSiteSettings(localSettings).then(() => { refreshData(); alert('Berhasil!'); }); }} className="flex flex-col gap-10">
-                <div className="space-y-6">
-                  <h3 className="text-xl font-black border-b pb-2">General & Hero Settings</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Nama Website</label><input className="h-12 border-2 rounded-xl px-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold" value={localSettings?.siteName} onChange={e => localSettings && setLocalSettings({...localSettings, siteName: e.target.value})} /></div>
-                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Logo URL</label><input className="h-12 border-2 rounded-xl px-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold" value={localSettings?.logoUrl} onChange={e => localSettings && setLocalSettings({...localSettings, logoUrl: e.target.value})} /></div>
-                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Hero Image URL</label><input className="h-12 border-2 rounded-xl px-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold" value={localSettings?.heroImage} onChange={e => localSettings && setLocalSettings({...localSettings, heroImage: e.target.value})} /></div>
-                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Hero Title</label><textarea className="h-24 border-2 rounded-xl p-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold resize-none" value={localSettings?.heroTitle} onChange={e => localSettings && setLocalSettings({...localSettings, heroTitle: e.target.value})} /></div>
-                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Footer Description</label><textarea className="h-24 border-2 rounded-xl p-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold resize-none" value={localSettings?.footerDescription} onChange={e => localSettings && setLocalSettings({...localSettings, footerDescription: e.target.value})} /></div>
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <h3 className="text-xl font-black border-b pb-2">About Us Page Content</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">About Header Title</label><input className="h-12 border-2 rounded-xl px-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold" value={localSettings?.aboutHeaderTitle} onChange={e => localSettings && setLocalSettings({...localSettings, aboutHeaderTitle: e.target.value})} /></div>
-                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">About Header Description</label><textarea className="h-32 border-2 rounded-xl p-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold resize-none" value={localSettings?.aboutHeaderDesc} onChange={e => localSettings && setLocalSettings({...localSettings, aboutHeaderDesc: e.target.value})} /></div>
-                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">About Section Title</label><input className="h-12 border-2 rounded-xl px-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold" value={localSettings?.aboutSectionTitle} onChange={e => localSettings && setLocalSettings({...localSettings, aboutSectionTitle: e.target.value})} /></div>
-                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">About Section Image URL</label><input className="h-12 border-2 rounded-xl px-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold" value={localSettings?.aboutSectionImage} onChange={e => localSettings && setLocalSettings({...localSettings, aboutSectionImage: e.target.value})} /></div>
-                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">About Section Description</label><textarea className="h-32 border-2 rounded-xl p-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold resize-none" value={localSettings?.aboutSectionDesc} onChange={e => localSettings && setLocalSettings({...localSettings, aboutSectionDesc: e.target.value})} /></div>
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <h3 className="text-xl font-black border-b pb-2">Contact Page Settings</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Contact Email</label><input className="h-12 border-2 rounded-xl px-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold" value={localSettings?.contactEmail} onChange={e => localSettings && setLocalSettings({...localSettings, contactEmail: e.target.value})} /></div>
-                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Contact Phone</label><input className="h-12 border-2 rounded-xl px-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold" value={localSettings?.contactPhone} onChange={e => localSettings && setLocalSettings({...localSettings, contactPhone: e.target.value})} /></div>
-                    <div className="md:col-span-2 flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Contact Address</label><input className="h-12 border-2 rounded-xl px-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold" value={localSettings?.contactAddress} onChange={e => localSettings && setLocalSettings({...localSettings, contactAddress: e.target.value})} /></div>
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <h3 className="text-xl font-black border-b pb-2">Social Media Links</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Instagram URL</label><input className="h-12 border-2 rounded-xl px-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold" value={localSettings?.instagramUrl} onChange={e => localSettings && setLocalSettings({...localSettings, instagramUrl: e.target.value})} /></div>
-                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">TikTok URL</label><input className="h-12 border-2 rounded-xl px-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold" value={localSettings?.tiktokUrl} onChange={e => localSettings && setLocalSettings({...localSettings, tiktokUrl: e.target.value})} /></div>
-                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">Facebook URL</label><input className="h-12 border-2 rounded-xl px-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold" value={localSettings?.facebookUrl} onChange={e => localSettings && setLocalSettings({...localSettings, facebookUrl: e.target.value})} /></div>
-                    <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400">YouTube URL</label><input className="h-12 border-2 rounded-xl px-4 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 outline-none focus:border-primary font-bold" value={localSettings?.youtubeUrl} onChange={e => localSettings && setLocalSettings({...localSettings, youtubeUrl: e.target.value})} /></div>
-                  </div>
-                </div>
-
-                <button className="h-16 bg-primary text-[#111811] rounded-2xl font-black text-lg shadow-xl shadow-primary/20">Update Pengaturan Situs</button>
+          <div className="max-w-md mx-auto bg-white dark:bg-[#1a2e1a] p-10 rounded-[40px] border border-gray-100 dark:border-gray-800 shadow-2xl text-center">
+             <div className="size-20 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-6"><span className="material-symbols-outlined text-4xl">admin_panel_settings</span></div>
+             <h3 className="text-2xl font-black mb-6">Akses Admin</h3>
+             <form onSubmit={e => { e.preventDefault(); dbService.saveAdminCredentials(adminCreds).then(() => alert('Diperbarui!')); }} className="flex flex-col gap-4 text-left">
+                <div className="flex flex-col gap-1"><label className="text-[10px] font-black uppercase text-gray-400 ml-2 tracking-widest">Username</label><input required className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold" value={adminCreds.username} onChange={e => setAdminCreds({...adminCreds, username: e.target.value})} /></div>
+                <div className="flex flex-col gap-1"><label className="text-[10px] font-black uppercase text-gray-400 ml-2 tracking-widest">Password</label><input required type="password" className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold" value={adminCreds.password} onChange={e => setAdminCreds({...adminCreds, password: e.target.value})} /></div>
+                <button className="h-16 bg-primary text-[#111811] rounded-2xl font-black mt-4 shadow-xl shadow-primary/20">SIMPAN AKSES</button>
              </form>
           </div>
         )}
       </div>
 
+      {/* MODAL FORM */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setIsModalOpen(false)}></div>
           <div className="relative w-full max-w-4xl bg-white dark:bg-background-dark rounded-[40px] p-8 md:p-12 shadow-2xl overflow-y-auto max-h-[90vh] no-scrollbar">
              <div className="flex justify-between items-center mb-10">
                <h2 className="text-4xl font-black tracking-tighter">
-                 {activeTab === 'products' ? (editingProduct?.id ? 'Edit Produk' : 'Produk Baru') : 'Formulir'}
+                 {activeTab === 'products' ? (editingProduct?.id ? 'Edit Produk' : 'Produk Baru') : 'Input Data'}
                </h2>
-               <button onClick={() => setIsModalOpen(false)} className="p-4 rounded-full bg-gray-50 dark:bg-black/20"><span className="material-symbols-outlined">close</span></button>
+               <button onClick={() => setIsModalOpen(false)} className="size-12 flex items-center justify-center rounded-full bg-gray-50 dark:bg-black/20 transition-colors hover:bg-red-500 hover:text-white"><span className="material-symbols-outlined">close</span></button>
              </div>
 
              {activeTab === 'products' ? (
                <form onSubmit={handleSaveProduct} className="flex flex-col gap-10">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                   <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400 uppercase tracking-widest">Nama Produk</label><input required className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 focus:border-primary outline-none font-bold" value={editingProduct?.name || ''} onChange={e => setEditingProduct({ ...editingProduct, name: e.target.value })} /></div>
-                   <div className="flex flex-col gap-2"><label className="text-xs font-black text-gray-400 uppercase tracking-widest">Kategori</label><input required className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 focus:border-primary outline-none font-bold" value={editingProduct?.category || ''} onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })} /></div>
-                   <div className="flex flex-col gap-2 md:col-span-2"><label className="text-xs font-black text-gray-400 uppercase tracking-widest">Deskripsi</label><textarea required className="h-32 border-2 rounded-2xl p-6 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 resize-none focus:border-primary outline-none font-bold" value={editingProduct?.description || ''} onChange={e => setEditingProduct({ ...editingProduct, description: e.target.value })} /></div>
+                   <div className="flex flex-col gap-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Nama Barang</label><input required className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold" value={editingProduct?.name || ''} onChange={e => setEditingProduct({ ...editingProduct, name: e.target.value })} /></div>
+                   <div className="flex flex-col gap-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Kategori</label><input required className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold" value={editingProduct?.category || ''} onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })} /></div>
+                   <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Deskripsi Produk</label><textarea required className="h-32 border-2 rounded-2xl p-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold resize-none" value={editingProduct?.description || ''} onChange={e => setEditingProduct({ ...editingProduct, description: e.target.value })} /></div>
                    
-                   <div className="flex flex-col gap-2">
-                     <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Foto Utama</label>
-                     <div className="relative aspect-video rounded-3xl bg-gray-50 dark:bg-black/20 border-2 border-dashed border-gray-200 dark:border-gray-800 flex items-center justify-center overflow-hidden group">
-                       {editingProduct?.coverMedia?.url || editingProduct?.image ? (
-                         <img src={editingProduct.coverMedia?.url || editingProduct.image} className="absolute inset-0 w-full h-full object-contain" />
-                       ) : <span className="material-symbols-outlined text-4xl text-gray-200">add_photo_alternate</span>}
-                       <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onChange={e => handleMediaUpload(e, true)} disabled={isUploading} />
-                       {isUploading && <div className="absolute inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center text-white font-black">Uploading...</div>}
+                   {/* COVER PHOTO - DUAL INPUT */}
+                   <div className="flex flex-col gap-4 border-2 border-gray-100 dark:border-gray-800 p-8 rounded-[32px] bg-gray-50/50 dark:bg-black/10 md:col-span-2">
+                     <h4 className="font-black text-xs uppercase tracking-widest text-primary">Foto Sampul Utama</h4>
+                     <div className="flex flex-col md:flex-row gap-8 items-center">
+                        <div className="relative size-48 shrink-0 rounded-[32px] bg-white dark:bg-black/20 border-2 border-dashed border-gray-200 dark:border-gray-800 flex items-center justify-center overflow-hidden group">
+                           {editingProduct?.coverMedia?.url || editingProduct?.image ? <img src={editingProduct.coverMedia?.url || editingProduct.image} className="absolute inset-0 w-full h-full object-contain" /> : <span className="material-symbols-outlined text-4xl text-gray-300">image</span>}
+                           <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onChange={async (e) => {
+                             const file = e.target.files?.[0];
+                             if(file) { try { const url = await uploadToImageKit(file); setEditingProduct(prev => ({ ...prev, coverMedia: { type: 'image', url }, image: url })); } catch(e) {} }
+                           }} disabled={isUploading} />
+                           {isUploading && <div className="absolute inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center text-white font-black text-xs">MENGUNGGAH...</div>}
+                        </div>
+                        <div className="flex-1 w-full space-y-2">
+                           <label className="text-[10px] font-black text-gray-400 uppercase">URL Gambar Manual</label>
+                           <input className="w-full h-12 border-2 rounded-xl px-4 font-bold text-sm bg-white dark:bg-black/40 outline-none focus:border-primary" placeholder="Paste Direct Link Gambar..." value={editingProduct?.coverMedia?.url || editingProduct?.image || ''} onChange={e => setEditingProduct({ ...editingProduct, coverMedia: { type: 'image', url: e.target.value }, image: e.target.value })} />
+                        </div>
                      </div>
                    </div>
 
-                   <div className="flex flex-col gap-2">
-                     <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Media Galeri (Maks 9)</label>
-                     <div className="grid grid-cols-3 gap-3 h-full min-h-[160px]">
-                        {(editingProduct?.gallery || []).map((m, idx) => (
-                          <div key={idx} className="relative aspect-square rounded-2xl bg-gray-50 dark:bg-black/20 overflow-hidden group">
-                            {m.type === 'video' ? (
-                              <video src={m.url} className="w-full h-full object-cover" />
-                            ) : (
-                              <img src={m.url} className="w-full h-full object-cover" />
-                            )}
-                            <button type="button" onClick={() => removeGalleryMedia(idx)} className="absolute top-1 right-1 size-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <span className="material-symbols-outlined text-sm">close</span>
-                            </button>
-                          </div>
-                        ))}
+                   {/* GALERI TAMBAHAN (MAX 9) */}
+                   <div className="md:col-span-2 space-y-4">
+                     <div className="flex items-center justify-between">
+                        <h4 className="font-black text-xs uppercase tracking-widest text-primary">Galeri Media Tambahan ({editingProduct?.gallery?.length || 0}/9)</h4>
                         {(editingProduct?.gallery?.length || 0) < 9 && (
-                          <div className="relative aspect-square rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-800 flex items-center justify-center hover:border-primary hover:text-primary transition-all cursor-pointer">
-                            <span className="material-symbols-outlined">add</span>
-                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*,video/*" onChange={e => handleMediaUpload(e, false)} disabled={isUploading} />
-                          </div>
+                          <button type="button" onClick={() => setEditingProduct(p => ({...p, gallery: [...(p?.gallery || []), { type: 'image', url: '' }]}))} className="text-primary font-black text-[10px] uppercase flex items-center gap-1 hover:underline tracking-widest">
+                            <span className="material-symbols-outlined text-base">add_box</span> Tambah Media
+                          </button>
                         )}
                      </div>
+                     <div className="grid grid-cols-1 gap-4">
+                        {editingProduct?.gallery?.map((item, idx) => (
+                           <div key={idx} className="flex flex-col md:flex-row gap-4 p-6 bg-gray-50 dark:bg-black/20 rounded-[24px] border border-gray-100 dark:border-gray-800 relative items-center">
+                              <div className="relative size-20 shrink-0 bg-white dark:bg-black/40 rounded-xl overflow-hidden border-2 border-dashed border-gray-200 dark:border-gray-800 flex items-center justify-center">
+                                 {item.url ? <img src={item.url} className="w-full h-full object-cover" /> : <span className="material-symbols-outlined text-gray-300">image</span>}
+                                 <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={async (e) => {
+                                   const file = e.target.files?.[0];
+                                   if(file) { try { const url = await uploadToImageKit(file); setEditingProduct(p => { const g = [...(p?.gallery || [])]; g[idx] = { ...g[idx], url }; return { ...p, gallery: g }; }); } catch(e) {} }
+                                 }} />
+                              </div>
+                              <div className="flex-1 w-full">
+                                <input className="w-full h-12 border-2 rounded-xl px-4 font-bold text-xs bg-white dark:bg-black/40 outline-none focus:border-primary" placeholder="URL Media Tambahan..." value={item.url} onChange={e => setEditingProduct(p => { const g = [...(p?.gallery || [])]; g[idx] = { ...g[idx], url: e.target.value }; return { ...p, gallery: g }; })} />
+                              </div>
+                              <button type="button" onClick={() => setEditingProduct(p => ({...p, gallery: p?.gallery?.filter((_, i) => i !== idx)}))} className="text-red-500 font-bold text-[10px] uppercase hover:underline">Hapus</button>
+                           </div>
+                        ))}
+                     </div>
                    </div>
 
-                   <div className="flex flex-col gap-4 md:col-span-2">
+                   {/* VARIASI HARGA */}
+                   <div className="md:col-span-2 space-y-4">
                      <div className="flex items-center justify-between">
-                       <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Variasi Produk</label>
-                       <button type="button" onClick={handleAddVariation} className="text-primary font-black text-xs uppercase flex items-center gap-1 hover:underline">
-                         <span className="material-symbols-outlined text-sm">add</span> Tambah Variasi
+                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Varian & Stok</label>
+                       <button type="button" onClick={() => setEditingProduct(p => ({...p, variations: [...(p?.variations || []), { id: Date.now().toString(), name: '', price: 0, stock: 10 }]}))} className="text-primary font-black text-[10px] uppercase flex items-center gap-1 hover:underline tracking-widest">
+                         <span className="material-symbols-outlined text-base">add_circle</span> Tambah Varian
                        </button>
                      </div>
-                     <div className="flex flex-col gap-3">
-                       {editingProduct?.variations?.map((v, idx) => (
-                         <div key={v.id} className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-gray-50 dark:bg-black/20 p-4 rounded-2xl items-center">
-                           <input placeholder="Nama (Contoh: XL)" className="bg-white dark:bg-black/20 border-none rounded-xl h-10 px-4 font-bold text-sm" value={v.name} onChange={e => updateVariation(v.id, 'name', e.target.value)} />
-                           <input type="number" placeholder="Harga" className="bg-white dark:bg-black/20 border-none rounded-xl h-10 px-4 font-bold text-sm" value={v.price} onChange={e => updateVariation(v.id, 'price', Number(e.target.value))} />
-                           <input type="number" placeholder="Stok" className="bg-white dark:bg-black/20 border-none rounded-xl h-10 px-4 font-bold text-sm" value={v.stock} onChange={e => updateVariation(v.id, 'stock', Number(e.target.value))} />
-                           <button type="button" onClick={() => removeVariation(v.id)} className="text-red-500 hover:text-red-700 font-bold text-xs uppercase">Hapus</button>
+                     <div className="space-y-3">
+                       {editingProduct?.variations?.map((v) => (
+                         <div key={v.id} className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-gray-50 dark:bg-black/20 p-4 rounded-2xl items-center border border-gray-100 dark:border-gray-800">
+                           <input placeholder="Label (ex: Warna Merah)" className="bg-white dark:bg-black/20 border-none rounded-xl h-12 px-4 font-bold text-sm" value={v.name} onChange={e => setEditingProduct(p => ({...p, variations: p?.variations?.map(it => it.id === v.id ? {...it, name: e.target.value} : it)}))} />
+                           <input type="number" placeholder="Harga" className="bg-white dark:bg-black/20 border-none rounded-xl h-12 px-4 font-bold text-sm" value={v.price} onChange={e => setEditingProduct(p => ({...p, variations: p?.variations?.map(it => it.id === v.id ? {...it, price: Number(e.target.value)} : it)}))} />
+                           <input type="number" placeholder="Stok" className="bg-white dark:bg-black/20 border-none rounded-xl h-12 px-4 font-bold text-sm" value={v.stock} onChange={e => setEditingProduct(p => ({...p, variations: p?.variations?.map(it => it.id === v.id ? {...it, stock: Number(e.target.value)} : it)}))} />
+                           <button type="button" onClick={() => setEditingProduct(p => ({...p, variations: p?.variations?.filter(it => it.id !== v.id)}))} className="text-red-500 hover:text-red-700 font-bold text-[10px] uppercase">Hapus</button>
                          </div>
                        ))}
+                       {(!editingProduct?.variations || editingProduct.variations.length === 0) && <div className="p-4 border-2 border-dashed border-gray-100 rounded-2xl text-center text-[10px] font-black uppercase text-gray-400">Minimal 1 variasi harga diperlukan.</div>}
                      </div>
                    </div>
                    
-                   <label className="flex items-center gap-3 cursor-pointer">
+                   <label className="flex items-center gap-3 cursor-pointer mt-2 bg-gray-50 dark:bg-black/20 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 w-fit">
                      <input type="checkbox" checked={editingProduct?.isFeatured} onChange={e => setEditingProduct({...editingProduct, isFeatured: e.target.checked})} className="size-6 rounded-lg text-primary focus:ring-primary border-gray-200 dark:border-gray-800" />
-                     <span className="font-black text-sm uppercase tracking-widest">Tampilkan di Halaman Utama</span>
+                     <span className="font-black text-[10px] uppercase tracking-widest">Pin di Beranda</span>
                    </label>
                  </div>
-                 <button type="submit" disabled={isUploading} className="h-16 bg-primary text-[#111811] rounded-2xl font-black text-xl shadow-2xl shadow-primary/30 hover:scale-[1.02] transition-all disabled:opacity-50">Simpan Produk Sekarang</button>
+                 <button type="submit" disabled={isUploading} className="h-16 bg-primary text-[#111811] rounded-[24px] font-black text-xl shadow-2xl shadow-primary/40 hover:scale-[1.02] transition-all disabled:opacity-50 mt-4">SIMPAN DATA PRODUK</button>
                </form>
              ) : activeTab === 'cs' ? (
-               <form onSubmit={handleSaveCS} className="flex flex-col gap-6">
-                  <input required placeholder="Nama CS" className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 focus:border-primary outline-none font-bold" value={editingCS?.name || ''} onChange={e => setEditingCS({ ...editingCS, name: e.target.value })} />
-                  <input required placeholder="Nomor WA (62...)" className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 focus:border-primary outline-none font-bold" value={editingCS?.phoneNumber || ''} onChange={e => setEditingCS({ ...editingCS, phoneNumber: e.target.value })} />
-                  <button className="h-16 bg-primary text-[#111811] rounded-2xl font-black text-lg">Simpan Kontak CS</button>
+               <form onSubmit={e => { e.preventDefault(); if(editingCS) dbService.saveCSContact(editingCS as CSContact).then(() => { refreshData(); setIsModalOpen(false); }); }} className="flex flex-col gap-6">
+                  <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-2">Nama Admin CS</label><input required placeholder="Contoh: Admin Siska" className="h-16 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 focus:border-primary outline-none font-bold text-lg" value={editingCS?.name || ''} onChange={e => setEditingCS({ ...editingCS, name: e.target.value })} /></div>
+                  <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-2">No WA (Awali 62)</label><input required placeholder="628..." className="h-16 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 focus:border-primary outline-none font-bold text-lg" value={editingCS?.phoneNumber || ''} onChange={e => setEditingCS({ ...editingCS, phoneNumber: e.target.value })} /></div>
+                  <button className="h-16 bg-primary text-[#111811] rounded-2xl font-black text-xl shadow-xl shadow-primary/20">SIMPAN KONTAK</button>
                </form>
              ) : (
-               <form onSubmit={handleSaveTestimonial} className="flex flex-col gap-6">
-                 <div className="relative aspect-square max-w-sm mx-auto rounded-3xl bg-gray-50 dark:bg-black/20 border-2 border-dashed border-gray-200 dark:border-gray-800 flex items-center justify-center overflow-hidden">
-                    {editingTestimonial?.imageUrl ? <img src={editingTestimonial.imageUrl} className="w-full h-full object-cover" /> : <span className="material-symbols-outlined text-4xl">add_photo_alternate</span>}
-                    <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onChange={e => uploadToImageKit(e.target.files![0]).then(url => setEditingTestimonial({...editingTestimonial, imageUrl: url}))} />
+               <form onSubmit={e => { e.preventDefault(); if(editingTestimonial) dbService.saveTestimonial(editingTestimonial as Testimonial).then(() => { refreshData(); setIsModalOpen(false); }); }} className="flex flex-col gap-8">
+                 <div className="flex flex-col md:flex-row gap-8 items-center border-2 border-gray-100 dark:border-gray-800 p-8 rounded-[32px] bg-gray-50/50 dark:bg-black/10">
+                    <div className="relative aspect-[3/4] w-40 shrink-0 rounded-[24px] bg-white dark:bg-black/20 border-2 border-dashed border-gray-200 dark:border-gray-800 flex items-center justify-center overflow-hidden">
+                        {editingTestimonial?.imageUrl ? <img src={editingTestimonial.imageUrl} className="w-full h-full object-cover" /> : <span className="material-symbols-outlined text-4xl text-gray-200">photo_camera</span>}
+                        <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if(file) { try { const url = await uploadToImageKit(file); setEditingTestimonial({...editingTestimonial, imageUrl: url}); } catch(e) {} }
+                        }} />
+                    </div>
+                    <div className="flex-1 w-full space-y-4">
+                        <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">URL Bukti Review Manual</label>
+                        <input className="w-full h-14 border-2 rounded-xl px-4 font-bold text-sm bg-white dark:bg-black/40 focus:border-primary outline-none" placeholder="https://..." value={editingTestimonial?.imageUrl || ''} onChange={e => setEditingTestimonial({ ...editingTestimonial, imageUrl: e.target.value })} />
+                    </div>
                  </div>
-                 <input placeholder="Nama Pelanggan" className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-gray-800 focus:border-primary outline-none font-bold" value={editingTestimonial?.customerName || ''} onChange={e => setEditingTestimonial({ ...editingTestimonial, customerName: e.target.value })} />
-                 <button className="h-16 bg-primary text-[#111811] rounded-2xl font-black text-lg">Simpan Testimoni</button>
+                 <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2 tracking-widest">Identitas Pelanggan</label><input placeholder="Contoh: Kak Andi - Surabaya" className="h-16 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 focus:border-primary outline-none font-bold" value={editingTestimonial?.customerName || ''} onChange={e => setEditingTestimonial({ ...editingTestimonial, customerName: e.target.value })} /></div>
+                 <button className="h-16 bg-primary text-[#111811] rounded-2xl font-black text-xl shadow-xl shadow-primary/20">SIMPAN REVIEW</button>
                </form>
              )}
           </div>

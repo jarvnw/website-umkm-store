@@ -10,6 +10,7 @@ import CartSidebar from './components/CartSidebar';
 import ProductCard from './components/ProductCard';
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import AdminLogin from './pages/Admin/AdminLogin';
+import { PrivacyPolicy, TermsOfService } from './pages/LegalPages';
 
 interface StoreContextType {
   products: Product[];
@@ -390,6 +391,8 @@ const App: React.FC = () => {
               <Route path="/product/:id" element={<ProductDetailPage />} />
               <Route path="/about" element={<AboutPage />} />
               <Route path="/contact" element={<ContactPage />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/terms-of-service" element={<TermsOfService />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin/*" element={<AdminDashboard />} />
             </Routes>

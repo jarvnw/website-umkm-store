@@ -30,27 +30,27 @@ const Footer: React.FC = () => {
         
         {/* Kolom 2: Navigasi Utama */}
         <div className="md:pl-10">
-          <h4 className="font-black mb-8 uppercase tracking-widest text-xs text-primary">Navigation</h4>
+          <h4 className="font-black mb-8 uppercase tracking-widest text-xs text-primary">Navigasi</h4>
           <ul className="flex flex-col gap-4 text-sm font-bold text-gray-500">
-            <li><Link to="/" className="hover:text-primary transition-colors">Home</Link></li>
-            <li><Link to="/products" className="hover:text-primary transition-colors">Shop All</Link></li>
-            <li><Link to="/about" className="hover:text-primary transition-colors">About Us</Link></li>
-            <li><Link to="/contact" className="hover:text-primary transition-colors">Contact</Link></li>
+            <li><Link to="/" className="hover:text-primary transition-colors">Beranda</Link></li>
+            <li><Link to="/products" className="hover:text-primary transition-colors">Semua Produk</Link></li>
+            <li><Link to="/about" className="hover:text-primary transition-colors">Tentang Kami</Link></li>
+            <li><Link to="/contact" className="hover:text-primary transition-colors">Kontak</Link></li>
           </ul>
         </div>
         
         {/* Kolom 3: Internal & Admin */}
         <div className="md:pl-10">
-          <h4 className="font-black mb-8 uppercase tracking-widest text-xs text-primary">Internal</h4>
+          <h4 className="font-black mb-8 uppercase tracking-widest text-xs text-primary">Legal & Admin</h4>
           <ul className="flex flex-col gap-4 text-sm font-bold text-gray-500">
             <li>
               <Link to="/admin/login" className="hover:text-primary transition-colors flex items-center gap-2">
                 <span className="material-symbols-outlined text-sm">admin_panel_settings</span>
-                Admin Panel
+                Panel Admin
               </Link>
             </li>
-            <li><a href="#" className="hover:text-primary transition-colors">Privacy Policy</a></li>
-            <li><a href="#" className="hover:text-primary transition-colors">Terms of Service</a></li>
+            <li><Link to="/privacy-policy" className="hover:text-primary transition-colors">Kebijakan Privasi</Link></li>
+            <li><Link to="/terms-of-service" className="hover:text-primary transition-colors">Syarat dan Ketentuan</Link></li>
           </ul>
         </div>
       </div>
