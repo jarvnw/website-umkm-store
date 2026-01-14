@@ -41,6 +41,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   logoUrl: '',
   faviconUrl: '',
   themeColor: 'Green',
+  themeFont: 'Default',
   heroImage: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&q=80&w=2000',
   heroTitle: 'Elegance in Every Detail.',
   heroSubtitle: 'Koleksi produk UMKM berkualitas tinggi.',

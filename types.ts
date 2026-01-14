@@ -55,7 +55,8 @@ export interface SiteSettings {
   siteName: string;
   logoUrl: string;
   faviconUrl: string;
-  themeColor: string; // New: Menyimpan nama tema warna (e.g., 'Green', 'Blue')
+  themeColor: string; 
+  themeFont: string; // New: Menyimpan nama tema font (e.g., 'Default', 'Display 1')
   heroImage: string;
   heroTitle: string;
   heroSubtitle: string;

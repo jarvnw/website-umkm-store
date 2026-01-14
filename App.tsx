@@ -23,6 +23,16 @@ export const THEME_COLORS: Record<string, string> = {
   'Yellow': '#facc15'
 };
 
+// --- THEME FONTS MAPPING ---
+export const FONT_THEMES: Record<string, { heading: string, body: string }> = {
+  'Default': { heading: "'Inter'", body: "'Inter'" },
+  'Display 1': { heading: "'Playfair Display'", body: "'Inter'" },
+  'Display 2': { heading: "'Playfair Display'", body: "'Plus Jakarta Sans'" },
+  'Bold': { heading: "'Fraunces'", body: "'Space Grotesk'" },
+  'Aesthetic 1': { heading: "'EB Garamond'", body: "'Carme'" },
+  'Aesthetic 2': { heading: "'EB Garamond'", body: "'Inter'" }
+};
+
 // --- HELPER COMPONENTS ---
 
 const ScrollToTop = () => {
@@ -71,17 +81,17 @@ const HomePage: React.FC = () => {
         <div className="max-w-[1200px] w-full">
           <div className="flex items-end justify-between px-4 pb-8 border-b border-[#dbe6db] dark:border-[#2a3a2a]">
             <div>
-              <h2 className="text-[#111811] dark:text-white text-3xl font-bold leading-tight">Featured Selection</h2>
-              <p className="text-[#618961] mt-2">Quality Choices, Tailored for You</p>
+              <h2 className="text-[#111811] dark:text-white text-3xl font-black leading-tight">Featured Selection</h2>
+              <p className="text-[#618961] mt-2 font-medium">Quality Choices, Tailored for You</p>
             </div>
-            <Link to="/products" className="text-primary font-bold hover:underline mb-1">View All</Link>
+            <Link to="/products" className="text-primary font-black hover:underline mb-1 text-sm uppercase tracking-widest">View All</Link>
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 py-10">
             {featured.length > 0 ? (
               featured.map(product => <ProductCard key={product.id} product={product} />)
             ) : (
-              <p className="col-span-full text-center text-gray-500 py-20">No featured products available.</p>
+              <p className="col-span-full text-center text-gray-500 py-20 font-medium">No featured products available.</p>
             )}
           </div>
         </div>
@@ -99,8 +109,8 @@ const HomePage: React.FC = () => {
             ].map((item, i) => (
               <div key={i} className="p-8 bg-white dark:bg-[#1a2e1a] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 transition-transform hover:-translate-y-2">
                 <span className="material-symbols-outlined text-primary text-4xl mb-4">{item.icon}</span>
-                <h3 className="text-xl font-bold mb-2">{item.title}</h3>
-                <p className="text-gray-500 text-sm">{item.desc}</p>
+                <h3 className="text-xl font-black mb-2">{item.title}</h3>
+                <p className="text-gray-500 text-sm font-medium">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -121,7 +131,7 @@ const HomePage: React.FC = () => {
                   <img src={t.imageUrl} alt="Customer Review" className="w-full h-auto object-cover" loading="lazy" />
                   <div className="p-6 border-t border-gray-50 dark:border-gray-800 flex flex-col gap-3">
                     {t.description && (
-                      <p className="text-gray-600 dark:text-gray-400 text-sm italic leading-relaxed text-center">
+                      <p className="text-gray-600 dark:text-gray-400 text-sm italic leading-relaxed text-center font-medium">
                         "{t.description}"
                       </p>
                     )}
@@ -149,7 +159,6 @@ const ProductDetailPage: React.FC = () => {
   const [selectedVar, setSelectedVar] = useState<Variation | null>(null);
   const [activeMedia, setActiveMedia] = useState<number>(0);
 
-  // Pastikan halaman ini selalu scroll ke atas saat dibuka (Double protection)
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     if (product && product.variations?.length > 0) {
@@ -158,7 +167,6 @@ const ProductDetailPage: React.FC = () => {
   }, [product, id]);
 
   const handleBack = () => {
-    // Logika navigasi cerdas untuk menghindari bug history kosong
     if (window.history.length > 1) {
       navigate(-1);
     } else {
@@ -166,7 +174,7 @@ const ProductDetailPage: React.FC = () => {
     }
   };
 
-  if (!product) return <div className="p-20 text-center">Product not found.</div>;
+  if (!product) return <div className="p-20 text-center font-bold">Product not found.</div>;
 
   const allMedia = [product.coverMedia, ...(product.gallery || [])].filter(m => m && m.url);
 
@@ -174,7 +182,6 @@ const ProductDetailPage: React.FC = () => {
     <div className="px-4 md:px-10 lg:px-40 py-4 md:py-12 flex justify-center animate-in fade-in duration-700">
       <div className="max-w-[1200px] w-full flex flex-col gap-4 md:gap-8">
         
-        {/* Navigation - Pill design for mobile focus */}
         <div className="flex items-center">
           <button 
             onClick={handleBack}
@@ -186,7 +193,6 @@ const ProductDetailPage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-16 items-start">
-          {/* Media Section */}
           <div className="flex flex-col gap-4">
             <div className="rounded-[32px] md:rounded-[48px] overflow-hidden aspect-square bg-white dark:bg-black/20 relative border border-gray-100 dark:border-gray-800 shadow-2xl group">
               {allMedia[activeMedia]?.type === 'video' ? (
@@ -216,7 +222,6 @@ const ProductDetailPage: React.FC = () => {
             )}
           </div>
 
-          {/* Details Section */}
           <div className="flex flex-col">
             <div className="mb-6 md:mb-10">
               <span className="inline-block px-3 py-1 bg-primary/10 text-primary font-black text-[9px] md:text-[10px] tracking-[0.2em] uppercase rounded-full mb-3 md:mb-4">
@@ -232,9 +237,9 @@ const ProductDetailPage: React.FC = () => {
 
             <div className="bg-white dark:bg-[#1a2e1a] p-6 md:p-8 rounded-[28px] md:rounded-[32px] border border-gray-100 dark:border-gray-800 mb-6 md:mb-8 shadow-sm">
               <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 md:mb-4 flex items-center gap-2">
-                <span className="material-symbols-outlined text-sm">description</span> Detail Produk
+                <span className="material-symbols-outlined text-sm font-black">description</span> Detail Produk
               </h4>
-              <p className="text-gray-600 dark:text-gray-400 leading-relaxed text-base md:text-lg whitespace-pre-line">
+              <p className="text-gray-600 dark:text-gray-400 leading-relaxed text-base md:text-lg whitespace-pre-line font-medium">
                 {product.description}
               </p>
             </div>
@@ -242,7 +247,7 @@ const ProductDetailPage: React.FC = () => {
             {product.variations?.length > 0 && (
               <div className="mb-8 md:mb-10">
                 <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 md:mb-4 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-sm">settings_input_component</span> Pilih Variasi
+                  <span className="material-symbols-outlined text-sm font-black">settings_input_component</span> Pilih Variasi
                 </h4>
                 <div className="flex flex-wrap gap-2.5 md:gap-3">
                   {product.variations.map(v => (
@@ -251,7 +256,7 @@ const ProductDetailPage: React.FC = () => {
                       onClick={() => setSelectedVar(v)}
                       className={`px-5 py-3 md:px-6 md:py-3.5 rounded-2xl font-bold border-2 transition-all flex flex-col gap-0.5 ${selectedVar?.id === v.id ? 'border-primary bg-primary text-black shadow-lg shadow-primary/20' : 'border-gray-100 dark:border-gray-800 text-gray-500 hover:border-primary/50'}`}
                     >
-                      <span className="text-sm">{v.name}</span>
+                      <span className="text-sm font-black">{v.name}</span>
                       {v.stock <= 5 && v.stock > 0 && <span className="text-[8px] uppercase font-black opacity-70">Sisa {v.stock}</span>}
                       {v.stock === 0 && <span className="text-[8px] uppercase font-black opacity-70">Stok Habis</span>}
                     </button>
@@ -282,7 +287,7 @@ const AboutPage: React.FC = () => {
       <section className="w-full bg-primary/10 py-32 px-4 md:px-10 lg:px-40 flex justify-center text-center">
         <div className="max-w-[800px]">
           <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter">{siteSettings.aboutHeaderTitle}</h1>
-          <p className="text-xl text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-line">
+          <p className="text-xl text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-line font-medium">
             {siteSettings.aboutHeaderDesc}
           </p>
         </div>
@@ -291,7 +296,7 @@ const AboutPage: React.FC = () => {
         <div><img src={siteSettings.aboutSectionImage} className="rounded-3xl shadow-2xl w-full object-cover aspect-video md:aspect-square" alt="About Section" /></div>
         <div className="flex flex-col gap-6">
           <h2 className="text-4xl font-black tracking-tight">{siteSettings.aboutSectionTitle}</h2>
-          <p className="text-gray-600 dark:text-gray-400 leading-relaxed text-lg whitespace-pre-line">{siteSettings.aboutSectionDesc}</p>
+          <p className="text-gray-600 dark:text-gray-400 leading-relaxed text-lg whitespace-pre-line font-medium">{siteSettings.aboutSectionDesc}</p>
         </div>
       </section>
     </div>
@@ -305,33 +310,30 @@ const ContactPage: React.FC = () => {
     <div className="px-4 md:px-10 lg:px-40 py-24 flex justify-center">
       <div className="max-w-[1000px] w-full text-center">
         <h1 className="text-5xl md:text-7xl font-black mb-8 tracking-tighter">Get in Touch</h1>
-        <p className="text-xl text-gray-500 dark:text-gray-400 mb-16 max-w-[700px] mx-auto">
+        <p className="text-xl text-gray-500 dark:text-gray-400 mb-16 max-w-[700px] mx-auto font-medium">
           We're here to help! Connect with us through any of these platforms or visit us at our office.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20">
-           {/* Phone */}
            <div className="bg-white dark:bg-[#1a2e1a] p-10 rounded-[40px] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl transition-all">
               <div className="size-16 rounded-3xl bg-primary/10 flex items-center justify-center text-primary mx-auto mb-6">
-                <span className="material-symbols-outlined text-4xl">call</span>
+                <span className="material-symbols-outlined text-4xl font-black">call</span>
               </div>
               <h4 className="font-black text-xl mb-2">Phone</h4>
               <p className="text-gray-500 font-bold">{siteSettings.contactPhone}</p>
            </div>
            
-           {/* Email */}
            <div className="bg-white dark:bg-[#1a2e1a] p-10 rounded-[40px] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl transition-all">
               <div className="size-16 rounded-3xl bg-primary/10 flex items-center justify-center text-primary mx-auto mb-6">
-                <span className="material-symbols-outlined text-4xl">mail</span>
+                <span className="material-symbols-outlined text-4xl font-black">mail</span>
               </div>
               <h4 className="font-black text-xl mb-2">Email</h4>
               <p className="text-gray-500 font-bold">{siteSettings.contactEmail}</p>
            </div>
 
-           {/* Location */}
            <div className="bg-white dark:bg-[#1a2e1a] p-10 rounded-[40px] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl transition-all">
               <div className="size-16 rounded-3xl bg-primary/10 flex items-center justify-center text-primary mx-auto mb-6">
-                <span className="material-symbols-outlined text-4xl">location_on</span>
+                <span className="material-symbols-outlined text-4xl font-black">location_on</span>
               </div>
               <h4 className="font-black text-xl mb-2">Address</h4>
               <p className="text-gray-500 font-bold">{siteSettings.contactAddress}</p>
@@ -339,7 +341,7 @@ const ContactPage: React.FC = () => {
         </div>
 
         <div className="flex flex-col items-center gap-8">
-          <h3 className="text-2xl font-black tracking-tight uppercase tracking-widest text-xs text-primary">Find Us on Social Media</h3>
+          <h3 className="font-black tracking-tight uppercase tracking-widest text-xs text-primary">Find Us on Social Media</h3>
           <div className="flex flex-wrap justify-center gap-6">
             {siteSettings.instagramUrl && (
               <a href={siteSettings.instagramUrl} target="_blank" rel="noopener noreferrer" className="size-14 rounded-2xl bg-white dark:bg-[#1a2e1a] border border-gray-100 dark:border-gray-800 flex items-center justify-center hover:scale-110 transition-transform shadow-sm">
@@ -400,18 +402,18 @@ const ProductsPage: React.FC = () => {
   }, [products, searchTerm, selectedCategory, minPrice, maxPrice, sortBy]);
 
   return (
-    <div className="px-4 md:px-10 lg:px-40 py-20">
+    <div className="px-4 md:px-10 lg:px-40 py-20 font-body">
       <div className="max-w-[1200px] mx-auto">
         <div className="flex flex-col gap-10 mb-16">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <h1 className="text-4xl font-black uppercase tracking-tighter">Collections</h1>
             <div className="relative w-full md:w-96 group">
-              <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors">search</span>
+              <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors font-black">search</span>
               <input 
                 value={searchTerm} 
                 onChange={e => setSearchTerm(e.target.value)} 
                 placeholder="Search products..." 
-                className="w-full pl-14 pr-6 h-14 bg-white dark:bg-[#1a2e1a] border border-gray-200 dark:border-gray-800 rounded-2xl outline-none focus:border-primary transition-all font-medium" 
+                className="w-full pl-14 pr-6 h-14 bg-white dark:bg-[#1a2e1a] border border-gray-200 dark:border-gray-800 rounded-2xl outline-none focus:border-primary transition-all font-black" 
               />
             </div>
           </div>
@@ -434,7 +436,7 @@ const ProductsPage: React.FC = () => {
                <div className="flex flex-col gap-2">
                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Sort By</label>
                  <select 
-                    className="h-12 rounded-xl bg-gray-50 dark:bg-black/20 border-none outline-none font-bold text-sm px-4 cursor-pointer"
+                    className="h-12 rounded-xl bg-gray-50 dark:bg-black/20 border-none outline-none font-black text-sm px-4 cursor-pointer"
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as any)}
                  >
@@ -449,7 +451,7 @@ const ProductsPage: React.FC = () => {
                  <input 
                     type="number" 
                     placeholder="0" 
-                    className="h-12 rounded-xl bg-gray-50 dark:bg-black/20 border-none outline-none font-bold text-sm px-4" 
+                    className="h-12 rounded-xl bg-gray-50 dark:bg-black/20 border-none outline-none font-black text-sm px-4" 
                     value={minPrice}
                     onChange={(e) => setMinPrice(e.target.value)}
                  />
@@ -460,7 +462,7 @@ const ProductsPage: React.FC = () => {
                  <input 
                     type="number" 
                     placeholder="Unlimited" 
-                    className="h-12 rounded-xl bg-gray-50 dark:bg-black/20 border-none outline-none font-bold text-sm px-4" 
+                    className="h-12 rounded-xl bg-gray-50 dark:bg-black/20 border-none outline-none font-black text-sm px-4" 
                     value={maxPrice}
                     onChange={(e) => setMaxPrice(e.target.value)}
                  />
@@ -475,8 +477,8 @@ const ProductsPage: React.FC = () => {
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-40 gap-4 text-gray-400">
-            <span className="material-symbols-outlined text-6xl">search_off</span>
-            <p className="font-bold text-xl">No products found matching your criteria.</p>
+            <span className="material-symbols-outlined text-6xl font-black">search_off</span>
+            <p className="font-black text-xl">No products found matching your criteria.</p>
             <button 
               onClick={() => { setSearchTerm(''); setSelectedCategory('All'); setMinPrice(''); setMaxPrice(''); }}
               className="text-primary font-black uppercase tracking-widest text-xs hover:underline"
@@ -533,6 +535,14 @@ const App: React.FC = () => {
     const hex = THEME_COLORS[themeName] || THEME_COLORS['Green'];
     document.documentElement.style.setProperty('--primary', hex);
   }, [siteSettings.themeColor]);
+
+  // Efek untuk update Tema Font secara dinamis
+  useEffect(() => {
+    const fontThemeName = siteSettings.themeFont || 'Default';
+    const fonts = FONT_THEMES[fontThemeName] || FONT_THEMES['Default'];
+    document.documentElement.style.setProperty('--font-heading', fonts.heading);
+    document.documentElement.style.setProperty('--font-body', fonts.body);
+  }, [siteSettings.themeFont]);
 
   // Efek untuk update Favicon secara dinamis
   useEffect(() => {
@@ -594,7 +604,7 @@ const App: React.FC = () => {
     }}>
       <Router>
         <ScrollToTop />
-        <div className="min-h-screen flex flex-col">
+        <div className="min-h-screen flex flex-col font-body">
           <Header onCartOpen={() => setIsCartOpen(true)} cartCount={cart.reduce((acc, item) => acc + item.quantity, 0)} />
           <main className="flex-1">
             <Routes>
