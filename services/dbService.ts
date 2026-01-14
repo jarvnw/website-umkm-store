@@ -1,5 +1,6 @@
 
 import { Product, CSContact, SiteSettings, Testimonial, AdminCredentials } from '../types';
+import { neon } from '@neondatabase/serverless';
 
 const getEnv = (key: string): string => {
   try {
@@ -11,26 +12,26 @@ const getEnv = (key: string): string => {
 };
 
 /**
- * PEMBERSIHAN URL HOST NEON (Lebih Agresif)
+ * KONFIGURASI KONEKSI NEON
  */
-const rawUrl = getEnv('VITE_NEON_API_URL');
-let NEON_HOST = '';
-if (rawUrl) {
-  NEON_HOST = rawUrl
-    .replace(/^psql\s'/, '')        // Hapus psql ' di awal jika ada
-    .replace(/'$/, '')               // Hapus ' di akhir jika ada
-    .replace('https://', '')
-    .replace('postgres://', '')
-    .replace('postgresql://', '')
-    .split('@').pop()!               // Ambil setelah @ jika ada (user:pass@host)
-    .replace('.apirest', '')         // Hapus .apirest (ini untuk Management API)
-    .replace('-pooler', '')          // Hapus -pooler (SQL API biasanya di host utama)
-    .split('/')[0]                   // Ambil host saja sebelum path/database
-    .split(':')[0]                   // Hapus port jika ada (:5432)
-    .split('?')[0];                  // Hapus query params (?sslmode=...)
-}
+const NEON_HOST = getEnv('VITE_NEON_API_URL')
+  .replace('https://', '')
+  .replace('postgres://', '')
+  .replace('postgresql://', '')
+  .split('@').pop()!
+  .replace('-pooler', '')
+  .split('/')[0];
 
-const NEON_API_KEY = getEnv('VITE_NEON_API_KEY');
+const NEON_PASSWORD = getEnv('VITE_NEON_API_KEY');
+
+// Membentuk connection string yang valid untuk Neon Serverless Driver
+// Format: postgres://user:password@host/neondb
+const connectionString = NEON_HOST && NEON_PASSWORD 
+  ? `postgres://neondb_owner:${NEON_PASSWORD}@${NEON_HOST}/neondb?sslmode=require`
+  : '';
+
+// Inisialisasi driver SQL
+const sql = connectionString ? neon(connectionString) : null;
 
 const PRODUCTS_KEY = 'lumina_products';
 const CS_KEY = 'lumina_cs_contacts';
@@ -56,50 +57,11 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   instagramUrl: '', tiktokUrl: '', facebookUrl: '', youtubeUrl: ''
 };
 
-const escapeSQL = (str: string) => (str || '').replace(/'/g, "''");
-const escapeJSON = (obj: any) => JSON.stringify(obj).replace(/'/g, "''");
-
-async function runQuery(sql: string) {
-  if (!NEON_HOST || !NEON_API_KEY) {
-    console.warn("Neon Config Missing. Using LocalStorage mode.");
-    return null;
-  }
-
-  try {
-    const url = `https://${NEON_HOST}/sql`;
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${NEON_API_KEY}`,
-        // Gunakan Content-Type standar yang didukung oleh server Neon tanpa memicu blokir CORS ketat
-        'Content-Type': 'application/json' 
-      },
-      body: JSON.stringify({ query: sql }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error(`Neon Error ${response.status}:`, errText);
-      return null;
-    }
-
-    const result = await response.json();
-    if (result.error) {
-      console.error('SQL Error:', result.error);
-      return null;
-    }
-    return result.rows || [];
-  } catch (e: any) {
-    console.error('Fetch Error:', e.message);
-    return null; 
-  }
-}
-
 export const dbService = {
   async getProducts(): Promise<Product[]> {
-    const rows = await runQuery('SELECT * FROM products ORDER BY created_at DESC');
-    if (rows) {
+    if (!sql) return JSON.parse(localStorage.getItem(PRODUCTS_KEY) || '[]');
+    try {
+      const rows = await sql`SELECT * FROM products ORDER BY created_at DESC`;
       const formatted = rows.map((r: any) => ({
         id: r.id,
         name: r.name,
@@ -115,49 +77,53 @@ export const dbService = {
       }));
       localStorage.setItem(PRODUCTS_KEY, JSON.stringify(formatted));
       return formatted;
+    } catch (e) {
+      console.error('Neon GetProducts Error:', e);
+      return JSON.parse(localStorage.getItem(PRODUCTS_KEY) || '[]');
     }
-    const local = localStorage.getItem(PRODUCTS_KEY);
-    return local ? JSON.parse(local) : [];
   },
 
   async saveProduct(p: Product): Promise<void> {
-    const sql = `
-      INSERT INTO products (id, name, description, price, category, image, cover_media, gallery, variations, is_featured, created_at)
-      VALUES (
-        '${p.id}', '${escapeSQL(p.name)}', '${escapeSQL(p.description)}', ${p.price}, 
-        '${escapeSQL(p.category)}', '${escapeSQL(p.image)}', '${escapeJSON(p.coverMedia)}', 
-        '${escapeJSON(p.gallery)}', '${escapeJSON(p.variations)}', ${p.isFeatured}, ${p.createdAt}
-      )
-      ON CONFLICT (id) DO UPDATE SET
-        name = EXCLUDED.name, description = EXCLUDED.description, price = EXCLUDED.price,
-        category = EXCLUDED.category, image = EXCLUDED.image, cover_media = EXCLUDED.cover_media,
-        gallery = EXCLUDED.gallery, variations = EXCLUDED.variations, is_featured = EXCLUDED.is_featured;
-    `;
-    
-    // Update local storage dulu agar UI cepat berubah
+    // Simpan ke local storage dulu agar UI responsif
     const local = JSON.parse(localStorage.getItem(PRODUCTS_KEY) || '[]');
     const idx = local.findIndex((item: any) => item.id === p.id);
     if (idx >= 0) local[idx] = p; else local.push(p);
     localStorage.setItem(PRODUCTS_KEY, JSON.stringify(local));
 
-    const res = await runQuery(sql);
-    if (res === null && NEON_HOST) {
-        throw new Error("Koneksi ke Neon gagal. Cek VITE_NEON_API_KEY (Password) dan VITE_NEON_API_URL (Host) Anda.");
+    if (!sql) return;
+
+    try {
+      await sql`
+        INSERT INTO products (id, name, description, price, category, image, cover_media, gallery, variations, is_featured, created_at)
+        VALUES (
+          ${p.id}, ${p.name}, ${p.description}, ${p.price}, ${p.category}, ${p.image}, 
+          ${JSON.stringify(p.coverMedia)}, ${JSON.stringify(p.gallery)}, ${JSON.stringify(p.variations)}, 
+          ${p.isFeatured}, ${p.createdAt}
+        )
+        ON CONFLICT (id) DO UPDATE SET
+          name = EXCLUDED.name, description = EXCLUDED.description, price = EXCLUDED.price,
+          category = EXCLUDED.category, image = EXCLUDED.image, cover_media = EXCLUDED.cover_media,
+          gallery = EXCLUDED.gallery, variations = EXCLUDED.variations, is_featured = EXCLUDED.is_featured;
+      `;
+    } catch (e: any) {
+      console.error('Neon SaveProduct Error:', e.message);
+      throw new Error("Gagal sinkronisasi ke Neon. Pastikan VITE_NEON_API_KEY adalah password 'npg_...' yang benar.");
     }
   },
 
   async deleteProduct(id: string): Promise<void> {
-    await runQuery(`DELETE FROM products WHERE id = '${id}'`);
     const local = localStorage.getItem(PRODUCTS_KEY);
     if (local) {
       const filtered = JSON.parse(local).filter((p: any) => p.id !== id);
       localStorage.setItem(PRODUCTS_KEY, JSON.stringify(filtered));
     }
+    if (sql) await sql`DELETE FROM products WHERE id = ${id}`;
   },
 
   async getCSContacts(): Promise<CSContact[]> {
-    const rows = await runQuery('SELECT * FROM cs_contacts');
-    if (rows) {
+    if (!sql) return JSON.parse(localStorage.getItem(CS_KEY) || '[]');
+    try {
+      const rows = await sql`SELECT * FROM cs_contacts`;
       const formatted = rows.map((r: any) => ({
         id: r.id,
         name: r.name,
@@ -166,28 +132,29 @@ export const dbService = {
       }));
       localStorage.setItem(CS_KEY, JSON.stringify(formatted));
       return formatted;
+    } catch (e) {
+      return JSON.parse(localStorage.getItem(CS_KEY) || '[]');
     }
-    const local = localStorage.getItem(CS_KEY);
-    return local ? JSON.parse(local) : [];
   },
 
   async saveCSContact(c: CSContact): Promise<void> {
-    const sql = `
+    if (!sql) return;
+    await sql`
       INSERT INTO cs_contacts (id, name, phone_number, is_active)
-      VALUES ('${c.id}', '${escapeSQL(c.name)}', '${c.phoneNumber}', ${c.isActive})
+      VALUES (${c.id}, ${c.name}, ${c.phoneNumber}, ${c.isActive})
       ON CONFLICT (id) DO UPDATE SET
         name = EXCLUDED.name, phone_number = EXCLUDED.phone_number, is_active = EXCLUDED.is_active;
     `;
-    await runQuery(sql);
   },
 
   async deleteCSContact(id: string): Promise<void> {
-    await runQuery(`DELETE FROM cs_contacts WHERE id = '${id}'`);
+    if (sql) await sql`DELETE FROM cs_contacts WHERE id = ${id}`;
   },
 
   async getTestimonials(): Promise<Testimonial[]> {
-    const rows = await runQuery('SELECT * FROM testimonials');
-    if (rows) {
+    if (!sql) return JSON.parse(localStorage.getItem(TESTIMONIALS_KEY) || '[]');
+    try {
+      const rows = await sql`SELECT * FROM testimonials`;
       const formatted = rows.map((r: any) => ({
         id: r.id,
         imageUrl: r.image_url,
@@ -196,60 +163,64 @@ export const dbService = {
       }));
       localStorage.setItem(TESTIMONIALS_KEY, JSON.stringify(formatted));
       return formatted;
+    } catch (e) {
+      return JSON.parse(localStorage.getItem(TESTIMONIALS_KEY) || '[]');
     }
-    const local = localStorage.getItem(TESTIMONIALS_KEY);
-    return local ? JSON.parse(local) : [];
   },
 
   async saveTestimonial(t: Testimonial): Promise<void> {
-    const sql = `
+    if (!sql) return;
+    await sql`
       INSERT INTO testimonials (id, image_url, customer_name, is_active)
-      VALUES ('${t.id}', '${escapeSQL(t.imageUrl)}', '${escapeSQL(t.customerName || '')}', ${t.isActive})
+      VALUES (${t.id}, ${t.imageUrl}, ${t.customerName || ''}, ${t.isActive})
       ON CONFLICT (id) DO UPDATE SET
         image_url = EXCLUDED.image_url, customer_name = EXCLUDED.customer_name, is_active = EXCLUDED.is_active;
     `;
-    await runQuery(sql);
   },
 
   async deleteTestimonial(id: string): Promise<void> {
-    await runQuery(`DELETE FROM testimonials WHERE id = '${id}'`);
+    if (sql) await sql`DELETE FROM testimonials WHERE id = ${id}`;
   },
 
   async getSiteSettings(): Promise<SiteSettings> {
-    const rows = await runQuery("SELECT data FROM site_settings WHERE id = 'main_settings'");
-    if (rows && rows.length > 0) {
-      const settings = typeof rows[0].data === 'string' ? JSON.parse(rows[0].data) : rows[0].data;
-      localStorage.setItem(SITE_SETTINGS_KEY, JSON.stringify(settings));
-      return settings;
-    }
-    const local = localStorage.getItem(SITE_SETTINGS_KEY);
-    return local ? JSON.parse(local) : DEFAULT_SETTINGS;
+    if (!sql) return JSON.parse(localStorage.getItem(SITE_SETTINGS_KEY) || JSON.stringify(DEFAULT_SETTINGS));
+    try {
+      const rows = await sql`SELECT data FROM site_settings WHERE id = 'main_settings'`;
+      if (rows.length > 0) {
+        const settings = typeof rows[0].data === 'string' ? JSON.parse(rows[0].data) : rows[0].data;
+        localStorage.setItem(SITE_SETTINGS_KEY, JSON.stringify(settings));
+        return settings;
+      }
+    } catch (e) {}
+    return JSON.parse(localStorage.getItem(SITE_SETTINGS_KEY) || JSON.stringify(DEFAULT_SETTINGS));
   },
 
   async saveSiteSettings(settings: SiteSettings): Promise<void> {
-    const sql = `
+    localStorage.setItem(SITE_SETTINGS_KEY, JSON.stringify(settings));
+    if (!sql) return;
+    await sql`
       INSERT INTO site_settings (id, data)
-      VALUES ('main_settings', '${escapeJSON(settings)}')
+      VALUES ('main_settings', ${JSON.stringify(settings)})
       ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data;
     `;
-    await runQuery(sql);
-    localStorage.setItem(SITE_SETTINGS_KEY, JSON.stringify(settings));
   },
 
   async getAdminCredentials(): Promise<AdminCredentials> {
-    const rows = await runQuery("SELECT username, password FROM admin_auth WHERE id = 'admin_config'");
-    if (rows && rows.length > 0) return { username: rows[0].username, password: rows[0].password };
-    const local = localStorage.getItem(ADMIN_KEY);
-    return local ? JSON.parse(local) : { username: 'admin', password: 'admin123' };
+    if (!sql) return JSON.parse(localStorage.getItem(ADMIN_KEY) || JSON.stringify({ username: 'admin', password: 'admin123' }));
+    try {
+      const rows = await sql`SELECT username, password FROM admin_auth WHERE id = 'admin_config'`;
+      if (rows.length > 0) return { username: rows[0].username, password: rows[0].password };
+    } catch (e) {}
+    return JSON.parse(localStorage.getItem(ADMIN_KEY) || JSON.stringify({ username: 'admin', password: 'admin123' }));
   },
 
   async saveAdminCredentials(creds: AdminCredentials): Promise<void> {
-    const sql = `
+    localStorage.setItem(ADMIN_KEY, JSON.stringify(creds));
+    if (!sql) return;
+    await sql`
       INSERT INTO admin_auth (id, username, password)
-      VALUES ('admin_config', '${escapeSQL(creds.username)}', '${escapeSQL(creds.password)}')
+      VALUES ('admin_config', ${creds.username}, ${creds.password})
       ON CONFLICT (id) DO UPDATE SET username = EXCLUDED.username, password = EXCLUDED.password;
     `;
-    await runQuery(sql);
-    localStorage.setItem(ADMIN_KEY, JSON.stringify(creds));
   }
 };
