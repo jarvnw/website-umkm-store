@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
+import React, { useState, useEffect, useCallback, createContext, useContext, useRef } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useParams, useLocation } from 'react-router-dom';
 import { Product, CartItem, CSContact, Variation, SiteSettings, Testimonial, Media } from './types';
 import { dbService, DEFAULT_SETTINGS } from './services/dbService';
@@ -64,6 +64,89 @@ export const useStore = () => {
   const context = useContext(StoreContext);
   if (!context) throw new Error('useStore must be used within StoreProvider');
   return context;
+};
+
+// --- SOCIAL PROOF POPUP ---
+const SocialProofPopup = () => {
+  const { products, siteSettings } = useStore();
+  const [currentProof, setCurrentProof] = useState<{ name: string; product: Product; time: string } | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const timeoutRef = useRef<number | null>(null);
+
+  const timeOptions = [
+    'Baru saja', '1 menit yang lalu', '2 menit yang lalu', '5 menit yang lalu', 
+    '15 menit yang lalu', '30 menit yang lalu', '1 jam yang lalu', 'Hari ini'
+  ];
+
+  const triggerNext = useCallback(() => {
+    if (!siteSettings.isSocialProofEnabled || !siteSettings.socialProofNames) return;
+
+    const names = siteSettings.socialProofNames.split('\n').filter(n => n.trim());
+    if (names.length === 0) return;
+
+    // Filter products based on selected IDs in admin
+    const selectedProductIds = siteSettings.socialProofProductIds || [];
+    let pool = products;
+    if (selectedProductIds.length > 0) {
+      pool = products.filter(p => selectedProductIds.includes(p.id));
+    }
+    
+    if (pool.length === 0) return;
+
+    const randomName = names[Math.floor(Math.random() * names.length)];
+    const randomProduct = pool[Math.floor(Math.random() * pool.length)];
+    const randomTime = timeOptions[Math.floor(Math.random() * timeOptions.length)];
+
+    setCurrentProof({ name: randomName, product: randomProduct, time: randomTime });
+    setIsVisible(true);
+
+    // Stay visible for 6 seconds
+    setTimeout(() => {
+      setIsVisible(false);
+      // Wait for 15-30 seconds before next trigger
+      const delay = Math.floor(Math.random() * 15000) + 15000;
+      timeoutRef.current = window.setTimeout(triggerNext, delay);
+    }, 6000);
+  }, [products, siteSettings]);
+
+  useEffect(() => {
+    if (!siteSettings.isSocialProofEnabled) {
+      setIsVisible(false);
+      return;
+    }
+
+    // Initial start after 5 seconds
+    const initialDelay = 5000;
+    timeoutRef.current = window.setTimeout(triggerNext, initialDelay);
+
+    return () => {
+      if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+    };
+  }, [siteSettings.isSocialProofEnabled, triggerNext]);
+
+  if (!currentProof) return null;
+
+  return (
+    <div className={`fixed bottom-6 left-6 z-[200] max-w-[320px] transition-all duration-700 transform ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0 pointer-events-none'}`}>
+      <div className="bg-white dark:bg-[#1a2e1a] rounded-2xl p-3 shadow-2xl border border-gray-100 dark:border-gray-800 flex items-center gap-4 group">
+        <div className="size-14 shrink-0 rounded-xl overflow-hidden bg-gray-100 dark:bg-black/20 border border-gray-50 dark:border-gray-800">
+           <img src={currentProof.product.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+        </div>
+        <div className="flex-1">
+           <p className="text-xs font-black leading-tight mb-1">
+             <span className="text-primary">{currentProof.name}</span> memilih <span className="text-gray-900 dark:text-white">{currentProof.product.name}</span>
+           </p>
+           <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+              <span className="material-symbols-outlined text-[12px] fill-current">history</span>
+              {currentProof.time}
+           </div>
+        </div>
+        <button onClick={() => setIsVisible(false)} className="size-6 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-300">
+          <span className="material-symbols-outlined text-sm">close</span>
+        </button>
+      </div>
+    </div>
+  );
 };
 
 // --- PROMOTION SECTION ---
@@ -509,6 +592,7 @@ const App: React.FC = () => {
           </main>
           <Footer />
           <CartSidebarWrapper />
+          <SocialProofPopup />
         </div>
       </Router>
     </StoreProvider>

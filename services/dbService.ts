@@ -55,11 +55,14 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   contactPhone: '6281234567890',
   contactAddress: 'Indonesia',
   instagramUrl: '', tiktokUrl: '', facebookUrl: '', youtubeUrl: '',
-  // Default Promo (Empty so it doesn't show)
   promoLabel: 'LIMITED TIME OFFER',
   promoTitle: '',
   promoSubtitle: '',
-  promoEndAt: 0
+  promoEndAt: 0,
+  // Social Proof Defaults
+  isSocialProofEnabled: false,
+  socialProofNames: 'Budi\nSiti\nAndi\nRina\nDewi\nJoko\nLani',
+  socialProofProductIds: []
 };
 
 export const dbService = {

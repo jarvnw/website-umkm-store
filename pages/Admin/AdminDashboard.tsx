@@ -16,7 +16,7 @@ const getEnv = (key: string): string => {
 const IK_PUBLIC_KEY = getEnv('VITE_IMAGEKIT_PUBLIC_KEY');
 
 const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'products' | 'site' | 'cs' | 'testimonials' | 'security'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'site' | 'cs' | 'testimonials' | 'security' | 'social_proof'>('products');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
   const [editingCS, setEditingCS] = useState<Partial<CSContact> | null>(null);
@@ -163,6 +163,7 @@ const AdminDashboard: React.FC = () => {
           {[
             { id: 'products', label: 'Produk' },
             { id: 'site', label: 'Tampilan' },
+            { id: 'social_proof', label: 'Social Proof' },
             { id: 'cs', label: 'Admin WA' },
             { id: 'testimonials', label: 'Testimoni' },
             { id: 'security', label: 'Akses' }
@@ -288,6 +289,62 @@ const AdminDashboard: React.FC = () => {
                    {isSaving ? 'Menyimpan...' : 'SIMPAN SEMUA PENGATURAN'}
                 </button>
              </form>
+          </div>
+        ) : activeTab === 'social_proof' ? (
+          <div className="bg-white dark:bg-[#1a2e1a] p-6 md:p-12 rounded-[40px] border border-gray-100 dark:border-gray-800 max-w-5xl mx-auto shadow-sm">
+            <form onSubmit={async (e) => { 
+                e.preventDefault(); if(!localSettings) return; setIsSaving(true);
+                try { await dbService.saveSiteSettings(localSettings); alert('Berhasil disimpan!'); refreshData(); } catch(err: any) { alert('Gagal: ' + err.message); } finally { setIsSaving(false); }
+             }} className="flex flex-col gap-8">
+                <div className="flex items-center justify-between p-6 bg-primary/5 rounded-3xl border border-primary/10">
+                   <div>
+                      <h3 className="font-black text-lg">Aktifkan Social Proof</h3>
+                      <p className="text-gray-400 text-xs font-medium">Munculkan notifikasi pembelian palsu/nyata untuk meningkatkan kepercayaan.</p>
+                   </div>
+                   <div className="relative inline-flex items-center cursor-pointer" onClick={() => localSettings && setLocalSettings({...localSettings, isSocialProofEnabled: !localSettings.isSocialProofEnabled})}>
+                      <div className={`w-14 h-8 rounded-full transition-colors ${localSettings?.isSocialProofEnabled ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-800'}`}></div>
+                      <div className={`absolute left-1 top-1 size-6 bg-white rounded-full transition-transform ${localSettings?.isSocialProofEnabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                   <div className="flex flex-col gap-4">
+                      <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">Daftar Nama Customer (Satu per baris)</label>
+                      <textarea 
+                        className="h-64 border-2 rounded-[32px] p-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-black resize-none"
+                        placeholder="Budi&#10;Siti&#10;Andi..."
+                        value={localSettings?.socialProofNames || ''}
+                        onChange={e => localSettings && setLocalSettings({...localSettings, socialProofNames: e.target.value})}
+                      />
+                   </div>
+                   <div className="flex flex-col gap-4">
+                      <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">Produk Yang Ditampilkan</label>
+                      <div className="h-64 border-2 rounded-[32px] p-6 bg-gray-50 dark:bg-black/20 overflow-y-auto no-scrollbar flex flex-col gap-3">
+                         {products.map(p => (
+                            <label key={p.id} className="flex items-center gap-3 cursor-pointer group">
+                               <input 
+                                 type="checkbox"
+                                 className="size-5 rounded-lg text-primary focus:ring-primary border-gray-300 dark:border-gray-800"
+                                 checked={localSettings?.socialProofProductIds?.includes(p.id)}
+                                 onChange={e => {
+                                    if(!localSettings) return;
+                                    const current = localSettings.socialProofProductIds || [];
+                                    const next = e.target.checked ? [...current, p.id] : current.filter(id => id !== p.id);
+                                    setLocalSettings({...localSettings, socialProofProductIds: next});
+                                 }}
+                               />
+                               <span className="text-sm font-black text-gray-600 dark:text-gray-400 group-hover:text-primary transition-colors">{p.name}</span>
+                            </label>
+                         ))}
+                         {products.length === 0 && <p className="text-gray-400 text-xs italic text-center py-10">Belum ada produk</p>}
+                      </div>
+                   </div>
+                </div>
+
+                <button disabled={isSaving} className="h-16 bg-primary text-black rounded-2xl font-black text-lg shadow-xl shadow-primary/20 mt-4 hover:scale-[1.01] transition-transform">
+                   {isSaving ? 'Menyimpan...' : 'SIMPAN PENGATURAN SOCIAL PROOF'}
+                </button>
+            </form>
           </div>
         ) : activeTab === 'cs' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

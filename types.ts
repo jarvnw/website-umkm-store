@@ -82,6 +82,10 @@ export interface SiteSettings {
   promoTitle: string;
   promoSubtitle: string;
   promoEndAt: number; // Timestamp
+  // Social Proof Feature
+  isSocialProofEnabled: boolean;
+  socialProofNames: string; // Newline separated names
+  socialProofProductIds: string[]; // List of product IDs
 }
 
 export interface AdminCredentials {
