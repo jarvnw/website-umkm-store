@@ -28,7 +28,7 @@ const Header: React.FC<HeaderProps> = ({ onCartOpen, cartCount }) => {
         </Link>
         <nav className="hidden md:flex items-center gap-8">
           <Link to="/" className="text-sm font-semibold hover:text-primary transition-colors">Home</Link>
-          <Link to="/products" className="text-sm font-semibold hover:text-primary transition-colors">Shop</Link>
+          <Link to="/products" className="text-sm font-semibold hover:text-primary transition-colors">Products</Link>
           <Link to="/about" className="text-sm font-semibold hover:text-primary transition-colors">About Us</Link>
           <Link to="/contact" className="text-sm font-semibold hover:text-primary transition-colors">Contact</Link>
         </nav>

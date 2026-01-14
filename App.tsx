@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
+import React, { useState, useEffect, useCallback, createContext, useContext, useMemo } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useNavigate, useParams } from 'react-router-dom';
 import { Product, CartItem, CSContact, UserInfo, Variation, SiteSettings, Testimonial } from './types';
 import { dbService, DEFAULT_SETTINGS } from './services/dbService';
@@ -297,17 +297,123 @@ const ContactPage: React.FC = () => {
 const ProductsPage: React.FC = () => {
   const { products } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
-  const filtered = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.category.toLowerCase().includes(searchTerm.toLowerCase()));
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [minPrice, setMinPrice] = useState<string>('');
+  const [maxPrice, setMaxPrice] = useState<string>('');
+  const [sortBy, setSortBy] = useState<'newest' | 'price-low' | 'price-high'>('newest');
+
+  // Mendapatkan kategori unik dari produk
+  const categories = useMemo(() => {
+    const cats = products.map(p => p.category);
+    return ['All', ...Array.from(new Set(cats))];
+  }, [products]);
+
+  const filtered = useMemo(() => {
+    let result = products.filter(p => {
+      const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          p.category.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchCategory = selectedCategory === 'All' || p.category === selectedCategory;
+      const matchMinPrice = minPrice === '' || p.price >= Number(minPrice);
+      const matchMaxPrice = maxPrice === '' || p.price <= Number(maxPrice);
+      
+      return matchSearch && matchCategory && matchMinPrice && matchMaxPrice;
+    });
+
+    // Sorting
+    if (sortBy === 'price-low') result.sort((a, b) => a.price - b.price);
+    if (sortBy === 'price-high') result.sort((a, b) => b.price - a.price);
+    if (sortBy === 'newest') result.sort((a, b) => b.createdAt - a.createdAt);
+
+    return result;
+  }, [products, searchTerm, selectedCategory, minPrice, maxPrice, sortBy]);
+
   return (
     <div className="px-4 md:px-10 lg:px-40 py-20">
       <div className="max-w-[1200px] mx-auto">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-12">
-          <h1 className="text-4xl font-black uppercase tracking-tighter">Collections</h1>
-          <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search..." className="w-full md:w-96 pl-6 h-14 bg-white dark:bg-[#1a2e1a] border border-gray-200 dark:border-gray-800 rounded-2xl outline-none" />
+        <div className="flex flex-col gap-10 mb-16">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <h1 className="text-4xl font-black uppercase tracking-tighter">Collections</h1>
+            <div className="relative w-full md:w-96 group">
+              <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors">search</span>
+              <input 
+                value={searchTerm} 
+                onChange={e => setSearchTerm(e.target.value)} 
+                placeholder="Search products..." 
+                className="w-full pl-14 pr-6 h-14 bg-white dark:bg-[#1a2e1a] border border-gray-200 dark:border-gray-800 rounded-2xl outline-none focus:border-primary transition-all font-medium" 
+              />
+            </div>
+          </div>
+
+          {/* Filter Bar */}
+          <div className="flex flex-col gap-6 p-8 bg-white dark:bg-[#1a2e1a] rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm">
+            <div className="flex flex-wrap items-center gap-4">
+              <span className="text-xs font-black uppercase tracking-widest text-gray-400 mr-2">Category:</span>
+              {categories.map(cat => (
+                <button 
+                  key={cat} 
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest transition-all border-2 ${selectedCategory === cat ? 'bg-primary border-primary text-black' : 'border-gray-100 dark:border-gray-800 hover:border-primary text-gray-500'}`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-gray-50 dark:border-gray-800">
+               <div className="flex flex-col gap-2">
+                 <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Sort By</label>
+                 <select 
+                    className="h-12 rounded-xl bg-gray-50 dark:bg-black/20 border-none outline-none font-bold text-sm px-4 cursor-pointer"
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as any)}
+                 >
+                   <option value="newest">Latest Products</option>
+                   <option value="price-low">Price: Low to High</option>
+                   <option value="price-high">Price: High to Low</option>
+                 </select>
+               </div>
+               
+               <div className="flex flex-col gap-2">
+                 <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Min Price (Rp)</label>
+                 <input 
+                    type="number" 
+                    placeholder="0" 
+                    className="h-12 rounded-xl bg-gray-50 dark:bg-black/20 border-none outline-none font-bold text-sm px-4" 
+                    value={minPrice}
+                    onChange={(e) => setMinPrice(e.target.value)}
+                 />
+               </div>
+
+               <div className="flex flex-col gap-2">
+                 <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Max Price (Rp)</label>
+                 <input 
+                    type="number" 
+                    placeholder="Unlimited" 
+                    className="h-12 rounded-xl bg-gray-50 dark:bg-black/20 border-none outline-none font-bold text-sm px-4" 
+                    value={maxPrice}
+                    onChange={(e) => setMaxPrice(e.target.value)}
+                 />
+               </div>
+            </div>
+          </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {filtered.map(product => <ProductCard key={product.id} product={product} />)}
-        </div>
+
+        {filtered.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {filtered.map(product => <ProductCard key={product.id} product={product} />)}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-40 gap-4 text-gray-400">
+            <span className="material-symbols-outlined text-6xl">search_off</span>
+            <p className="font-bold text-xl">No products found matching your criteria.</p>
+            <button 
+              onClick={() => { setSearchTerm(''); setSelectedCategory('All'); setMinPrice(''); setMaxPrice(''); }}
+              className="text-primary font-black uppercase tracking-widest text-xs hover:underline"
+            >
+              Reset Filters
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
