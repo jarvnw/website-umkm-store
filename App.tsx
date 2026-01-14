@@ -51,7 +51,7 @@ const HomePage: React.FC = () => {
           <div className="flex items-end justify-between px-4 pb-8 border-b border-[#dbe6db] dark:border-[#2a3a2a]">
             <div>
               <h2 className="text-[#111811] dark:text-white text-3xl font-bold leading-tight">Featured Selection</h2>
-              <p className="text-[#618961] mt-2">Curated quality for your lifestyle</p>
+              <p className="text-[#618961] mt-2">Quality Choices, Tailored for You</p>
             </div>
             <Link to="/products" className="text-primary font-bold hover:underline mb-1">View All</Link>
           </div>

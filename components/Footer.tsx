@@ -56,7 +56,7 @@ const Footer: React.FC = () => {
       </div>
       
       <div className="max-w-[1200px] mx-auto mt-20 pt-8 border-t border-gray-50 dark:border-gray-800 text-center md:text-left text-xs text-gray-400 font-bold">
-        © 2024 {siteSettings.siteName}. Crafted for modern lifestyle.
+        © 2024 {siteSettings.siteName}. Bangga Buatan Indonesia.
       </div>
     </footer>
   );

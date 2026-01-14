@@ -28,7 +28,7 @@ const Hero: React.FC = () => {
               to="/products"
               className="flex items-center justify-center min-w-[200px] h-16 bg-primary text-[#111811] text-lg font-black rounded-xl hover:scale-105 transition-transform shadow-2xl shadow-primary/30"
             >
-              Shop Collection
+              Browse Products
             </Link>
           </div>
         </div>
