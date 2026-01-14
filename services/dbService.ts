@@ -11,20 +11,23 @@ const getEnv = (key: string): string => {
 };
 
 /**
- * Logika Pembersihan Host Neon yang Sangat Ketat
- * Kita butuh HOST asli database (contoh: ep-cool-darkness-123.ap-southeast-1.aws.neon.tech)
- * Tanpa 'https://', tanpa '.apirest', tanpa path.
+ * PEMBERSIHAN URL HOST NEON (Lebih Agresif)
  */
 const rawUrl = getEnv('VITE_NEON_API_URL');
 let NEON_HOST = '';
 if (rawUrl) {
   NEON_HOST = rawUrl
+    .replace(/^psql\s'/, '')        // Hapus psql ' di awal jika ada
+    .replace(/'$/, '')               // Hapus ' di akhir jika ada
     .replace('https://', '')
     .replace('postgres://', '')
-    .split('@').pop()!             // Ambil setelah @ jika itu connection string
-    .replace('.apirest', '')       // HAPUS .apirest jika ada (penyebab CORS error)
-    .split('/')[0]                 // Ambil host saja sebelum path
-    .split('?')[0];                // Hapus query params
+    .replace('postgresql://', '')
+    .split('@').pop()!               // Ambil setelah @ jika ada (user:pass@host)
+    .replace('.apirest', '')         // Hapus .apirest (ini untuk Management API)
+    .replace('-pooler', '')          // Hapus -pooler (SQL API biasanya di host utama)
+    .split('/')[0]                   // Ambil host saja sebelum path/database
+    .split(':')[0]                   // Hapus port jika ada (:5432)
+    .split('?')[0];                  // Hapus query params (?sslmode=...)
 }
 
 const NEON_API_KEY = getEnv('VITE_NEON_API_KEY');
@@ -58,34 +61,37 @@ const escapeJSON = (obj: any) => JSON.stringify(obj).replace(/'/g, "''");
 
 async function runQuery(sql: string) {
   if (!NEON_HOST || !NEON_API_KEY) {
-    console.warn("Neon Config Missing. Data saved to LocalStorage only.");
+    console.warn("Neon Config Missing. Using LocalStorage mode.");
     return null;
   }
 
   try {
-    // Gunakan URL Host Database langsung dengan endpoint /sql
     const url = `https://${NEON_HOST}/sql`;
     
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${NEON_API_KEY}`,
+        // Gunakan Content-Type standar yang didukung oleh server Neon tanpa memicu blokir CORS ketat
+        'Content-Type': 'application/json' 
       },
-      // Kirim sebagai text untuk menghindari beberapa kendala preflight CORS pada Content-Type
       body: JSON.stringify({ query: sql }),
     });
 
     if (!response.ok) {
-      const errBody = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errBody}`);
+      const errText = await response.text();
+      console.error(`Neon Error ${response.status}:`, errText);
+      return null;
     }
 
     const result = await response.json();
-    if (result.error) throw new Error(result.error);
+    if (result.error) {
+      console.error('SQL Error:', result.error);
+      return null;
+    }
     return result.rows || [];
-  } catch (e) {
-    console.error('Neon Connection Failed:', e);
-    // Kita tidak throw error di sini agar aplikasi tetap bisa bekerja via LocalStorage
+  } catch (e: any) {
+    console.error('Fetch Error:', e.message);
     return null; 
   }
 }
@@ -127,21 +133,26 @@ export const dbService = {
         category = EXCLUDED.category, image = EXCLUDED.image, cover_media = EXCLUDED.cover_media,
         gallery = EXCLUDED.gallery, variations = EXCLUDED.variations, is_featured = EXCLUDED.is_featured;
     `;
+    
+    // Update local storage dulu agar UI cepat berubah
+    const local = JSON.parse(localStorage.getItem(PRODUCTS_KEY) || '[]');
+    const idx = local.findIndex((item: any) => item.id === p.id);
+    if (idx >= 0) local[idx] = p; else local.push(p);
+    localStorage.setItem(PRODUCTS_KEY, JSON.stringify(local));
+
     const res = await runQuery(sql);
-    
-    // Update local storage sebagai backup langsung
-    const products = await this.getProducts();
-    const idx = products.findIndex(item => item.id === p.id);
-    if (idx >= 0) products[idx] = p; else products.push(p);
-    localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
-    
-    if (res === null && NEON_HOST) throw new Error("Gagal terhubung ke database Neon (CORS/Network)");
+    if (res === null && NEON_HOST) {
+        throw new Error("Koneksi ke Neon gagal. Cek VITE_NEON_API_KEY (Password) dan VITE_NEON_API_URL (Host) Anda.");
+    }
   },
 
   async deleteProduct(id: string): Promise<void> {
     await runQuery(`DELETE FROM products WHERE id = '${id}'`);
-    const products = await this.getProducts();
-    localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products.filter(p => p.id !== id)));
+    const local = localStorage.getItem(PRODUCTS_KEY);
+    if (local) {
+      const filtered = JSON.parse(local).filter((p: any) => p.id !== id);
+      localStorage.setItem(PRODUCTS_KEY, JSON.stringify(filtered));
+    }
   },
 
   async getCSContacts(): Promise<CSContact[]> {
