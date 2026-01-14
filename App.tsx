@@ -1,8 +1,7 @@
 
-import React, { useState, useEffect, useCallback, createContext, useContext, useMemo } from 'react';
-import { HashRouter as Router, Routes, Route, Link, useNavigate, useParams, useLocation } from 'react-router-dom';
-// Import Media type from types.ts
-import { Product, CartItem, CSContact, UserInfo, Variation, SiteSettings, Testimonial, Media } from './types';
+import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
+import { HashRouter as Router, Routes, Route, Link, useParams, useLocation } from 'react-router-dom';
+import { Product, CartItem, CSContact, Variation, SiteSettings, Testimonial, Media } from './types';
 import { dbService, DEFAULT_SETTINGS } from './services/dbService';
 import Header from './components/Header';
 import Hero from './components/Hero';
@@ -258,7 +257,6 @@ const ProductDetailPage: React.FC = () => {
   const { id } = useParams();
   const { products, addToCart } = useStore();
   const [selectedVariation, setSelectedVariation] = useState<Variation | null>(null);
-  // Using imported Media type
   const [activeMedia, setActiveMedia] = useState<Media | null>(null);
   const product = products.find(p => p.id === id);
 
@@ -271,6 +269,7 @@ const ProductDetailPage: React.FC = () => {
 
   if (!product) return <div className="p-20 text-center font-bold">Produk tidak ditemukan.</div>;
   const currentPrice = selectedVariation ? selectedVariation.price : product.price;
+  const currentOriginalPrice = selectedVariation?.originalPrice || (selectedVariation ? undefined : product.originalPrice);
 
   return (
     <div className="px-4 md:px-10 lg:px-40 py-20 flex justify-center">
@@ -298,7 +297,12 @@ const ProductDetailPage: React.FC = () => {
         <div className="flex flex-col">
           <span className="text-xs font-black text-primary uppercase tracking-[0.3em] mb-4">{product.category}</span>
           <h1 className="text-4xl font-black mb-6 leading-tight">{product.name}</h1>
-          <p className="text-3xl font-black text-primary mb-8">Rp {currentPrice.toLocaleString('id-ID')}</p>
+          <div className="flex flex-col mb-8">
+            {currentOriginalPrice && currentOriginalPrice > currentPrice && (
+              <p className="text-lg text-gray-400 line-through">Rp {currentOriginalPrice.toLocaleString('id-ID')}</p>
+            )}
+            <p className="text-4xl font-black text-primary">Rp {currentPrice.toLocaleString('id-ID')}</p>
+          </div>
           <div className="mb-10">
             <h4 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-4">Pilih Variasi</h4>
             <div className="flex flex-wrap gap-3">
@@ -326,63 +330,63 @@ const AboutPage: React.FC = () => {
   const { siteSettings } = useStore();
   return (
     <div className="flex flex-col">
-       <section className="bg-gray-50 dark:bg-black/20 py-32 px-4 md:px-10 lg:px-40 text-center">
-          <h1 className="text-5xl font-black mb-6 tracking-tight">{siteSettings.aboutHeaderTitle}</h1>
-          <p className="max-w-[700px] mx-auto text-gray-500 font-medium text-lg leading-relaxed">{siteSettings.aboutHeaderDesc}</p>
-       </section>
-       <section className="py-32 px-4 md:px-10 lg:px-40 flex justify-center">
-          <div className="max-w-[1200px] w-full grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-             <img src={siteSettings.aboutSectionImage} className="rounded-[40px] shadow-2xl" />
-             <div>
-                <h2 className="text-4xl font-black mb-8 leading-tight">{siteSettings.aboutSectionTitle}</h2>
-                <p className="text-gray-500 font-medium leading-relaxed text-lg whitespace-pre-line">{siteSettings.aboutSectionDesc}</p>
-             </div>
+       <div className="bg-gray-50 dark:bg-black/20 py-20 px-4 md:px-10 lg:px-40 text-center">
+          <h1 className="text-4xl md:text-6xl font-black mb-4">{siteSettings.aboutHeaderTitle}</h1>
+          <p className="text-gray-500 max-w-2xl mx-auto font-medium">{siteSettings.aboutHeaderDesc}</p>
+       </div>
+       <div className="px-4 md:px-10 lg:px-40 py-24 flex flex-col md:flex-row items-center gap-16 max-w-[1200px] mx-auto">
+          <div className="flex-1">
+             <h2 className="text-3xl font-black mb-6">{siteSettings.aboutSectionTitle}</h2>
+             <p className="text-gray-500 leading-relaxed font-medium whitespace-pre-line">{siteSettings.aboutSectionDesc}</p>
           </div>
-       </section>
+          <div className="flex-1 aspect-video md:aspect-square rounded-[40px] overflow-hidden shadow-2xl">
+             <img src={siteSettings.aboutSectionImage} className="w-full h-full object-cover" />
+          </div>
+       </div>
     </div>
   );
 };
 
 const ContactPage: React.FC = () => {
-  const { siteSettings, csContacts } = useStore();
+  const { siteSettings } = useStore();
   return (
     <div className="px-4 md:px-10 lg:px-40 py-24 flex justify-center">
-       <div className="max-w-[1000px] w-full">
-          <div className="text-center mb-20">
-             <h1 className="text-5xl font-black mb-6">Hubungi Kami</h1>
-             <p className="text-gray-500 font-medium">Kami siap membantu Anda kapan saja.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-             <div className="bg-white dark:bg-[#1a2e1a] p-10 rounded-[40px] border border-gray-100 dark:border-gray-800 shadow-sm">
-                <h3 className="text-xl font-black mb-8">Informasi Kontak</h3>
-                <div className="flex flex-col gap-6">
-                   <div className="flex items-center gap-4">
-                      <div className="size-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary"><span className="material-symbols-outlined">mail</span></div>
-                      <div><p className="text-xs text-gray-400 font-black uppercase tracking-widest">Email</p><p className="font-bold">{siteSettings.contactEmail}</p></div>
-                   </div>
-                   <div className="flex items-center gap-4">
-                      <div className="size-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary"><span className="material-symbols-outlined">call</span></div>
-                      <div><p className="text-xs text-gray-400 font-black uppercase tracking-widest">WhatsApp</p><p className="font-bold">+{siteSettings.contactPhone}</p></div>
-                   </div>
-                   <div className="flex items-center gap-4">
-                      <div className="size-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary"><span className="material-symbols-outlined">location_on</span></div>
-                      <div><p className="text-xs text-gray-400 font-black uppercase tracking-widest">Alamat</p><p className="font-bold">{siteSettings.contactAddress}</p></div>
-                   </div>
-                </div>
+       <div className="max-w-[1200px] w-full grid grid-cols-1 lg:grid-cols-2 gap-20">
+          <div>
+             <h1 className="text-4xl font-black mb-8">Hubungi Kami</h1>
+             <p className="text-gray-500 mb-12 font-medium">Kami siap membantu Anda dengan pertanyaan atau pesanan Anda.</p>
+             <div className="space-y-8">
+                {[
+                  { icon: 'mail', title: 'Email', value: siteSettings.contactEmail },
+                  { icon: 'call', title: 'WhatsApp', value: siteSettings.contactPhone },
+                  { icon: 'location_on', title: 'Alamat', value: siteSettings.contactAddress }
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-6">
+                     <div className="size-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+                        <span className="material-symbols-outlined">{item.icon}</span>
+                     </div>
+                     <div>
+                        <p className="text-xs font-black uppercase text-gray-400 tracking-widest">{item.title}</p>
+                        <p className="font-bold text-lg">{item.value}</p>
+                     </div>
+                  </div>
+                ))}
              </div>
-             <div className="flex flex-col gap-6">
-                <h3 className="text-xl font-black mb-2">CS Online</h3>
-                <div className="flex flex-col gap-4">
-                   {csContacts.filter(c => c.isActive).map(cs => (
-                      <a key={cs.id} href={`https://wa.me/${cs.phoneNumber}`} target="_blank" rel="noreferrer" className="flex items-center justify-between p-6 bg-primary text-black rounded-3xl font-black hover:scale-[1.02] transition-transform">
-                         <div className="flex items-center gap-4">
-                            <span className="material-symbols-outlined">chat</span>
-                            <span>{cs.name}</span>
-                         </div>
-                         <span className="text-xs uppercase tracking-widest">Chat Now</span>
-                      </a>
-                   ))}
-                </div>
+          </div>
+          <div className="bg-white dark:bg-[#1a2e1a] p-10 rounded-[40px] shadow-2xl border border-gray-100 dark:border-gray-800">
+             <h3 className="text-2xl font-black mb-8">Media Sosial</h3>
+             <div className="grid grid-cols-2 gap-4">
+                {[
+                  { name: 'Instagram', url: siteSettings.instagramUrl, icon: 'https://cdn-icons-png.flaticon.com/512/174/174855.png' },
+                  { name: 'TikTok', url: siteSettings.tiktokUrl, icon: 'https://cdn-icons-png.flaticon.com/512/3046/3046121.png' },
+                  { name: 'Facebook', url: siteSettings.facebookUrl, icon: 'https://cdn-icons-png.flaticon.com/512/124/124010.png' },
+                  { name: 'YouTube', url: siteSettings.youtubeUrl, icon: 'https://cdn-icons-png.flaticon.com/512/1384/1384060.png' }
+                ].filter(s => s.url).map((social, i) => (
+                  <a key={i} href={social.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-black/20 rounded-2xl hover:scale-105 transition-transform">
+                     <img src={social.icon} className="size-6 grayscale dark:invert" />
+                     <span className="font-bold text-sm">{social.name}</span>
+                  </a>
+                ))}
              </div>
           </div>
        </div>
@@ -399,42 +403,57 @@ const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   const refreshData = useCallback(async () => {
-    const [p, cs, t, s] = await Promise.all([
+    const [p, cs, s, t] = await Promise.all([
       dbService.getProducts(),
       dbService.getCSContacts(),
-      dbService.getTestimonials(),
-      dbService.getSiteSettings()
+      dbService.getSiteSettings(),
+      dbService.getTestimonials()
     ]);
     setProducts(p);
     setCsContacts(cs);
-    setTestimonials(t);
     setSiteSettings(s);
+    setTestimonials(t);
   }, []);
 
   useEffect(() => {
     refreshData();
     const savedCart = localStorage.getItem('lumina_cart');
-    if (savedCart) {
-      try {
-        setCart(JSON.parse(savedCart));
-      } catch (e) {
-        setCart([]);
-      }
-    }
+    if (savedCart) setCart(JSON.parse(savedCart));
   }, [refreshData]);
 
   useEffect(() => {
     localStorage.setItem('lumina_cart', JSON.stringify(cart));
   }, [cart]);
 
+  // Apply visual themes when settings change
+  useEffect(() => {
+    const color = THEME_COLORS[siteSettings.themeColor] || THEME_COLORS['Green'];
+    document.documentElement.style.setProperty('--color-primary', color);
+    const fonts = FONT_THEMES[siteSettings.themeFont] || FONT_THEMES['Default'];
+    document.documentElement.style.setProperty('--font-heading', fonts.heading);
+    document.documentElement.style.setProperty('--font-body', fonts.body);
+    if (siteSettings.faviconUrl) {
+      let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = siteSettings.faviconUrl;
+    }
+    document.title = siteSettings.siteName;
+  }, [siteSettings]);
+
   const addToCart = (product: Product, variation?: Variation) => {
     setCart(prev => {
-      const existing = prev.find(item => item.id === product.id && item.selectedVariation?.id === variation?.id);
-      if (existing) {
-        return prev.map(item => (item.id === product.id && item.selectedVariation?.id === variation?.id) 
-          ? { ...item, quantity: item.quantity + 1 } 
-          : item
-        );
+      const existingIndex = prev.findIndex(item => 
+        item.id === product.id && 
+        item.selectedVariation?.id === variation?.id
+      );
+      if (existingIndex >= 0) {
+        const next = [...prev];
+        next[existingIndex].quantity += 1;
+        return next;
       }
       return [...prev, { ...product, quantity: 1, selectedVariation: variation }];
     });
@@ -442,15 +461,17 @@ const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   };
 
   const removeFromCart = (productId: string, variationId?: string) => {
-    setCart(prev => prev.filter(item => !(item.id === productId && item.selectedVariation?.id === variationId)));
+    setCart(prev => prev.filter(item => 
+      !(item.id === productId && item.selectedVariation?.id === variationId)
+    ));
   };
 
   const updateCartQuantity = (productId: string, variationId: string, quantity: number) => {
-    if (quantity < 1) {
-      removeFromCart(productId, variationId);
-      return;
-    }
-    setCart(prev => prev.map(item => (item.id === productId && item.selectedVariation?.id === variationId) ? { ...item, quantity } : item));
+    if (quantity < 1) return removeFromCart(productId, variationId);
+    setCart(prev => prev.map(item => 
+      (item.id === productId && (item.selectedVariation?.id === variationId || (!item.selectedVariation && !variationId))) 
+      ? { ...item, quantity } : item
+    ));
   };
 
   const clearCart = () => setCart([]);
@@ -467,63 +488,38 @@ const App: React.FC = () => {
   return (
     <StoreProvider>
       <Router>
-        <ScrollToTop />
-        <StoreContext.Consumer>
-          {store => {
-            const themeColor = store?.siteSettings.themeColor ? (THEME_COLORS[store.siteSettings.themeColor] || THEME_COLORS['Green']) : THEME_COLORS['Green'];
-            const fontTheme = store?.siteSettings.themeFont ? (FONT_THEMES[store.siteSettings.themeFont] || FONT_THEMES['Default']) : FONT_THEMES['Default'];
-            
-            return (
-              <div 
-                className="min-h-screen flex flex-col bg-background-light dark:bg-background-dark text-[#111811] dark:text-white transition-colors"
-                style={{
-                  // @ts-ignore
-                  '--primary-color': themeColor,
-                  '--font-heading': fontTheme.heading,
-                  '--font-body': fontTheme.body,
-                } as React.CSSProperties}
-              >
-                <style>{`
-                  :root { 
-                    --primary: ${themeColor};
-                  }
-                  .text-primary { color: var(--primary); }
-                  .bg-primary { background-color: var(--primary); }
-                  .border-primary { border-color: var(--primary); }
-                  .shadow-primary\\/20 { --tw-shadow-color: rgba(${hexToRgb(themeColor)}, 0.2); }
-                  .shadow-primary\\/30 { --tw-shadow-color: rgba(${hexToRgb(themeColor)}, 0.3); }
-                  .shadow-primary\\/40 { --tw-shadow-color: rgba(${hexToRgb(themeColor)}, 0.4); }
-                  body { font-family: var(--font-body), sans-serif; }
-                  h1, h2, h3, h4, h5, h6 { font-family: var(--font-heading), sans-serif; }
-                `}</style>
-                <Header onCartOpen={() => store?.setIsCartOpen(true)} cartCount={store?.cart.reduce((a, b) => a + b.quantity, 0) || 0} />
-                <main className="flex-1 flex flex-col">
-                  <Routes>
-                    <Route path="/" element={<HomePage />} />
-                    <Route path="/products" element={<ProductsPage />} />
-                    <Route path="/product/:id" element={<ProductDetailPage />} />
-                    <Route path="/about" element={<AboutPage />} />
-                    <Route path="/contact" element={<ContactPage />} />
-                    <Route path="/admin/login" element={<AdminLogin />} />
-                    <Route path="/admin" element={<AdminDashboard />} />
-                    <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                    <Route path="/terms-of-service" element={<TermsOfService />} />
-                  </Routes>
-                </main>
-                <Footer />
-                <CartSidebar isOpen={!!store?.isCartOpen} onClose={() => store?.setIsCartOpen(false)} />
-              </div>
-            );
-          }}
-        </StoreContext.Consumer>
+        <div className="min-h-screen bg-background-light dark:bg-background-dark text-[#111811] dark:text-white transition-colors">
+          <ScrollToTop />
+          <HeaderWrapper />
+          <main className="flex flex-col min-h-[calc(100vh-80px-400px)]">
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/products" element={<ProductsPage />} />
+              <Route path="/product/:id" element={<ProductDetailPage />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/contact" element={<ContactPage />} />
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/terms-of-service" element={<TermsOfService />} />
+            </Routes>
+          </main>
+          <Footer />
+          <CartSidebarWrapper />
+        </div>
       </Router>
     </StoreProvider>
   );
 };
 
-function hexToRgb(hex: string) {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '0, 255, 0';
-}
+const HeaderWrapper = () => {
+  const { cart, setIsCartOpen } = useStore();
+  return <Header onCartOpen={() => setIsCartOpen(true)} cartCount={cart.reduce((acc, i) => acc + i.quantity, 0)} />;
+};
+
+const CartSidebarWrapper = () => {
+  const { isCartOpen, setIsCartOpen } = useStore();
+  return <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />;
+};
 
 export default App;

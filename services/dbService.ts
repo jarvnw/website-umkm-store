@@ -72,6 +72,7 @@ export const dbService = {
         name: r.name,
         description: r.description,
         price: Number(r.price),
+        originalPrice: r.original_price ? Number(r.original_price) : undefined,
         category: r.category,
         image: r.image,
         coverMedia: typeof r.cover_media === 'string' ? JSON.parse(r.cover_media) : r.cover_media,
@@ -98,16 +99,17 @@ export const dbService = {
 
     try {
       await sql`
-        INSERT INTO products (id, name, description, price, category, image, cover_media, gallery, variations, is_featured, created_at)
+        INSERT INTO products (id, name, description, price, original_price, category, image, cover_media, gallery, variations, is_featured, created_at)
         VALUES (
-          ${p.id}, ${p.name}, ${p.description}, ${p.price}, ${p.category}, ${p.image}, 
+          ${p.id}, ${p.name}, ${p.description}, ${p.price}, ${p.originalPrice || null}, ${p.category}, ${p.image}, 
           ${JSON.stringify(p.coverMedia)}, ${JSON.stringify(p.gallery)}, ${JSON.stringify(p.variations)}, 
           ${p.isFeatured}, ${p.createdAt}
         )
         ON CONFLICT (id) DO UPDATE SET
           name = EXCLUDED.name, description = EXCLUDED.description, price = EXCLUDED.price,
-          category = EXCLUDED.category, image = EXCLUDED.image, cover_media = EXCLUDED.cover_media,
-          gallery = EXCLUDED.gallery, variations = EXCLUDED.variations, is_featured = EXCLUDED.is_featured;
+          original_price = EXCLUDED.original_price, category = EXCLUDED.category, image = EXCLUDED.image, 
+          cover_media = EXCLUDED.cover_media, gallery = EXCLUDED.gallery, variations = EXCLUDED.variations, 
+          is_featured = EXCLUDED.is_featured;
       `;
     } catch (e: any) {
       console.error('Neon SaveProduct Error:', e.message);

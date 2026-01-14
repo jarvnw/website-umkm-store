@@ -83,6 +83,7 @@ const AdminDashboard: React.FC = () => {
         name: editingProduct.name || '',
         description: editingProduct.description || '',
         price: editingProduct.variations?.[0]?.price || 0,
+        originalPrice: editingProduct.originalPrice || undefined,
         category: editingProduct.category || 'Umum',
         image: editingProduct.coverMedia?.url || editingProduct.image || '',
         coverMedia: editingProduct.coverMedia || { type: 'image', url: '' },
@@ -101,6 +102,33 @@ const AdminDashboard: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleAddGalleryItem = () => {
+    if (!editingProduct) return;
+    const gallery = editingProduct.gallery || [];
+    if (gallery.length >= 9) {
+      alert('Maksimal 9 media tambahan!');
+      return;
+    }
+    setEditingProduct({
+      ...editingProduct,
+      gallery: [...gallery, { type: 'image', url: '' }]
+    });
+  };
+
+  const handleRemoveGalleryItem = (index: number) => {
+    if (!editingProduct) return;
+    const gallery = [...(editingProduct.gallery || [])];
+    gallery.splice(index, 1);
+    setEditingProduct({ ...editingProduct, gallery });
+  };
+
+  const handleUpdateGalleryItem = (index: number, updates: Partial<Media>) => {
+    if (!editingProduct) return;
+    const gallery = [...(editingProduct.gallery || [])];
+    gallery[index] = { ...gallery[index], ...updates };
+    setEditingProduct({ ...editingProduct, gallery });
   };
 
   const SectionHeader = ({ title, icon }: { title: string, icon: string }) => (
@@ -164,7 +192,10 @@ const AdminDashboard: React.FC = () => {
                   )}
                 </div>
                 <div className="flex-1">
-                  <h4 className="text-lg font-black">{p.name}</h4>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-lg font-black">{p.name}</h4>
+                    {p.isFeatured && <span className="bg-primary text-black text-[8px] font-black px-2 py-0.5 rounded-full">FEATURED</span>}
+                  </div>
                   <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em]">{p.category}</p>
                 </div>
                 <div className="flex gap-2">
@@ -331,8 +362,30 @@ const AdminDashboard: React.FC = () => {
                     <input required className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" placeholder="Nama Barang" value={editingProduct?.name || ''} onChange={e => setEditingProduct({ ...editingProduct, name: e.target.value })} />
                     <input required className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" placeholder="Kategori" value={editingProduct?.category || ''} onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })} />
                     <textarea required className="h-32 md:col-span-2 border-2 rounded-2xl p-6 bg-gray-50 dark:bg-black/20 outline-none font-black resize-none" placeholder="Deskripsi" value={editingProduct?.description || ''} onChange={e => setEditingProduct({ ...editingProduct, description: e.target.value })} />
+                    <div className="flex flex-col gap-2">
+                       <label className="text-[10px] font-black uppercase text-gray-400 ml-2">Harga Utama (Coret jika ada promo)</label>
+                       <input type="number" className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" placeholder="Harga Coret (Original Price)" value={editingProduct?.originalPrice || ''} onChange={e => setEditingProduct({ ...editingProduct, originalPrice: Number(e.target.value) || undefined })} />
+                    </div>
+
+                    {/* FEATURED TOGGLE */}
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[10px] font-black uppercase text-gray-400 ml-2">Tampilkan di Beranda</label>
+                      <div className="flex items-center gap-3 h-14 bg-primary/5 border border-primary/10 rounded-2xl px-6">
+                        <input 
+                          type="checkbox" 
+                          id="isFeatured" 
+                          className="size-6 rounded-lg text-primary focus:ring-primary border-gray-300 dark:border-gray-800"
+                          checked={!!editingProduct?.isFeatured}
+                          onChange={e => setEditingProduct({ ...editingProduct, isFeatured: e.target.checked })}
+                        />
+                        <label htmlFor="isFeatured" className="text-xs font-black uppercase tracking-widest cursor-pointer select-none">
+                          Featured Selection
+                        </label>
+                      </div>
+                    </div>
                   </div>
 
+                  {/* MEDIA UTAMA SECTION */}
                   <div className="p-8 bg-primary/5 border border-primary/10 rounded-[32px] space-y-6">
                      <div className="flex items-center justify-between">
                         <h4 className="font-black text-xs uppercase tracking-widest text-primary">Media Utama (Sampul)</h4>
@@ -361,6 +414,50 @@ const AdminDashboard: React.FC = () => {
                      </div>
                   </div>
 
+                  {/* GALLERY SECTION */}
+                  <div className="p-8 bg-gray-50 dark:bg-black/20 border border-gray-100 dark:border-gray-800 rounded-[32px] space-y-6">
+                     <div className="flex items-center justify-between">
+                        <h4 className="font-black text-xs uppercase tracking-widest text-gray-400">Galeri Media Tambahan (Maks 9)</h4>
+                        <button type="button" onClick={handleAddGalleryItem} className="text-primary font-black text-[10px] uppercase tracking-widest hover:underline">+ Tambah Media</button>
+                     </div>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {editingProduct?.gallery?.map((m, idx) => (
+                           <div key={idx} className="bg-white dark:bg-black/20 p-4 rounded-3xl border border-gray-100 dark:border-gray-800 flex flex-col gap-4">
+                              <div className="flex items-center justify-between">
+                                 <div className="flex gap-2">
+                                    <button type="button" onClick={() => handleUpdateGalleryItem(idx, { type: 'image' })} className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest transition-all ${m.type !== 'video' ? 'bg-primary text-black' : 'bg-gray-100 dark:bg-gray-800'}`}>Image</button>
+                                    <button type="button" onClick={() => handleUpdateGalleryItem(idx, { type: 'video' })} className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest transition-all ${m.type === 'video' ? 'bg-primary text-black' : 'bg-gray-100 dark:bg-gray-800'}`}>Video</button>
+                                 </div>
+                                 <button type="button" onClick={() => handleRemoveGalleryItem(idx)} className="text-red-500 font-black text-[8px] uppercase tracking-widest hover:underline">Hapus</button>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                 <div className="relative size-16 shrink-0 rounded-xl bg-gray-50 dark:bg-black/20 border-2 border-dashed border-gray-200 dark:border-gray-800 flex items-center justify-center overflow-hidden">
+                                    {m.url ? (
+                                       m.type === 'video' ? <span className="material-symbols-outlined text-primary">play_circle</span> : <img src={m.url} className="w-full h-full object-cover" />
+                                    ) : <span className="material-symbols-outlined text-gray-300">image</span>}
+                                    <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*,video/*" onChange={async (e) => {
+                                       const file = e.target.files?.[0];
+                                       if(file) { 
+                                          try { 
+                                             const type = file.type.startsWith('video/') ? 'video' : 'image';
+                                             const url = await uploadToImageKit(file); 
+                                             handleUpdateGalleryItem(idx, { type, url });
+                                          } catch(e) {} 
+                                       }
+                                    }} />
+                                 </div>
+                                 <input className="flex-1 h-10 border-2 rounded-xl px-4 bg-white dark:bg-black/40 outline-none font-bold text-[10px]" placeholder="URL media..." value={m.url} onChange={e => handleUpdateGalleryItem(idx, { url: e.target.value })} />
+                              </div>
+                           </div>
+                        ))}
+                        {(!editingProduct?.gallery || editingProduct.gallery.length === 0) && (
+                           <div className="md:col-span-2 py-10 border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-3xl flex items-center justify-center text-gray-400 font-bold text-xs uppercase tracking-widest italic">
+                              Belum ada media galeri
+                           </div>
+                        )}
+                     </div>
+                  </div>
+
                   <div className="space-y-4">
                      <div className="flex items-center justify-between">
                         <label className="text-xs font-black uppercase tracking-widest text-gray-400">Varian Harga & Stok</label>
@@ -368,9 +465,10 @@ const AdminDashboard: React.FC = () => {
                      </div>
                      <div className="space-y-3">
                        {editingProduct?.variations?.map((v) => (
-                         <div key={v.id} className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-gray-50 dark:bg-black/20 p-4 rounded-2xl items-center">
+                         <div key={v.id} className="grid grid-cols-1 md:grid-cols-5 gap-3 bg-gray-50 dark:bg-black/20 p-4 rounded-2xl items-center">
                            <input required placeholder="Nama Varian" className="bg-white dark:bg-black/20 rounded-xl h-12 px-4 font-black text-sm" value={v.name} onChange={e => setEditingProduct(p => ({...p, variations: p?.variations?.map(it => it.id === v.id ? {...it, name: e.target.value} : it)}))} />
-                           <input required type="number" placeholder="Harga" className="bg-white dark:bg-black/20 rounded-xl h-12 px-4 font-black text-sm" value={v.price} onChange={e => setEditingProduct(p => ({...p, variations: p?.variations?.map(it => it.id === v.id ? {...it, price: Number(e.target.value)} : it)}))} />
+                           <input required type="number" placeholder="Harga Jual" className="bg-white dark:bg-black/20 rounded-xl h-12 px-4 font-black text-sm" value={v.price} onChange={e => setEditingProduct(p => ({...p, variations: p?.variations?.map(it => it.id === v.id ? {...it, price: Number(e.target.value)} : it)}))} />
+                           <input type="number" placeholder="Harga Coret" className="bg-white dark:bg-black/20 rounded-xl h-12 px-4 font-black text-sm" value={v.originalPrice || ''} onChange={e => setEditingProduct(p => ({...p, variations: p?.variations?.map(it => it.id === v.id ? {...it, originalPrice: Number(e.target.value) || undefined} : it)}))} />
                            <input required type="number" placeholder="Stok" className="bg-white dark:bg-black/20 rounded-xl h-12 px-4 font-black text-sm" value={v.stock} onChange={e => setEditingProduct(p => ({...p, variations: p?.variations?.map(it => it.id === v.id ? {...it, stock: Number(e.target.value)} : it)}))} />
                            <button type="button" onClick={() => setEditingProduct(p => ({...p, variations: p?.variations?.filter(it => it.id !== v.id)}))} className="text-red-500 font-black text-[10px] uppercase">Hapus</button>
                          </div>

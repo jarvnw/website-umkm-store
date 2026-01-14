@@ -3,6 +3,7 @@ export interface Variation {
   id: string;
   name: string;
   price: number;
+  originalPrice?: number;
   stock: number;
 }
 
@@ -16,6 +17,7 @@ export interface Product {
   name: string;
   description: string;
   price: number;
+  originalPrice?: number;
   category: string;
   image: string;
   coverMedia: Media;

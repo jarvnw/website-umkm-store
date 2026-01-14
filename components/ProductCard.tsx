@@ -49,7 +49,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           {product.name}
         </Link>
         <div className="flex items-center justify-between mt-auto">
-          <p className="text-xl font-black text-primary">Rp {product.price.toLocaleString('id-ID')}</p>
+          <div className="flex flex-col">
+            {product.originalPrice && product.originalPrice > product.price && (
+              <p className="text-xs text-gray-400 line-through">Rp {product.originalPrice.toLocaleString('id-ID')}</p>
+            )}
+            <p className="text-xl font-black text-primary">Rp {product.price.toLocaleString('id-ID')}</p>
+          </div>
         </div>
       </div>
     </div>
