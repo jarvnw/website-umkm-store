@@ -25,6 +25,7 @@ const AdminDashboard: React.FC = () => {
   const [adminCreds, setAdminCreds] = useState<AdminCredentials>({ username: '', password: '' });
   const [isUploading, setIsUploading] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const navigate = useNavigate();
   const { refreshData, products, csContacts, siteSettings, testimonials } = useStore();
@@ -61,7 +62,7 @@ const AdminDashboard: React.FC = () => {
       if (!response.ok) throw new Error(result.message || 'Gagal');
       return result.url;
     } catch (error: any) {
-      alert(`Gagal: ${error.message}\n\nGunakan "URL Gambar Manual" jika upload bermasalah.`);
+      alert(`Gagal upload: ${error.message}\n\nSilakan gunakan URL gambar manual.`);
       throw error;
     } finally {
       setIsUploading(false);
@@ -71,23 +72,39 @@ const AdminDashboard: React.FC = () => {
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProduct) return;
-    const product: Product = {
-      id: editingProduct.id || Date.now().toString(),
-      name: editingProduct.name || '',
-      description: editingProduct.description || '',
-      price: editingProduct.variations?.[0]?.price || Number(editingProduct.price) || 0,
-      category: editingProduct.category || 'Umum',
-      image: editingProduct.coverMedia?.url || editingProduct.image || '',
-      coverMedia: editingProduct.coverMedia || { type: 'image', url: '' },
-      gallery: editingProduct.gallery || [],
-      variations: editingProduct.variations || [],
-      isFeatured: !!editingProduct.isFeatured,
-      createdAt: editingProduct.createdAt || Date.now()
-    };
-    await dbService.saveProduct(product);
-    refreshData();
-    setIsModalOpen(false);
-    setEditingProduct(null);
+
+    // Validasi Minimal
+    if (!editingProduct.variations || editingProduct.variations.length === 0) {
+      alert('Minimal harus memiliki 1 variasi harga!');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const product: Product = {
+        id: editingProduct.id || Date.now().toString(),
+        name: editingProduct.name || '',
+        description: editingProduct.description || '',
+        price: editingProduct.variations?.[0]?.price || 0,
+        category: editingProduct.category || 'Umum',
+        image: editingProduct.coverMedia?.url || editingProduct.image || '',
+        coverMedia: editingProduct.coverMedia || { type: 'image', url: '' },
+        gallery: editingProduct.gallery || [],
+        variations: editingProduct.variations || [],
+        isFeatured: !!editingProduct.isFeatured,
+        createdAt: editingProduct.createdAt || Date.now()
+      };
+      
+      await dbService.saveProduct(product);
+      alert('Produk berhasil disimpan!');
+      refreshData();
+      setIsModalOpen(false);
+      setEditingProduct(null);
+    } catch (error: any) {
+      alert('Gagal menyimpan ke database Neon: ' + error.message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const SectionHeader = ({ title, icon }: { title: string, icon: string }) => (
@@ -107,7 +124,7 @@ const AdminDashboard: React.FC = () => {
             </div>
             <div>
               <h1 className="text-4xl font-black tracking-tighter">Pengaturan Toko</h1>
-              <p className="text-gray-400 font-bold uppercase text-[10px] tracking-[0.2em] mt-1">Control Panel v2.0</p>
+              <p className="text-gray-400 font-bold uppercase text-[10px] tracking-[0.2em] mt-1">Control Panel v2.1</p>
             </div>
           </div>
           <div className="flex gap-3">
@@ -124,7 +141,7 @@ const AdminDashboard: React.FC = () => {
                <div className="size-12 rounded-2xl bg-primary text-black flex items-center justify-center shrink-0"><span className="material-symbols-outlined">lightbulb</span></div>
                <div>
                   <h4 className="font-black text-lg mb-2">Tips Mengelola Gambar:</h4>
-                  <p className="text-gray-500 font-medium mb-4">Jika tombol upload (ikon foto) tidak bekerja di environment Anda, silakan gunakan <b>URL Gambar Manual</b>. Anda bisa mengunggah foto ke layanan seperti <a href="https://postimages.org/" target="_blank" className="text-primary underline">PostImages</a> lalu menempelkan <b>Direct Link</b>-nya di kolom yang tersedia.</p>
+                  <p className="text-gray-500 font-medium mb-4">Pastikan <b>VITE_NEON_API_URL</b> dan <b>VITE_NEON_API_KEY</b> di Vercel sudah benar. Jika simpan gagal, biasanya karena tanda kutip dalam teks atau format URL database yang salah.</p>
                </div>
             </div>
           </div>
@@ -169,7 +186,20 @@ const AdminDashboard: React.FC = () => {
           </div>
         ) : activeTab === 'site' ? (
           <div className="bg-white dark:bg-[#1a2e1a] p-6 md:p-12 rounded-[40px] border border-gray-100 dark:border-gray-800 max-w-5xl mx-auto shadow-sm">
-             <form onSubmit={e => { e.preventDefault(); if(localSettings) dbService.saveSiteSettings(localSettings).then(() => { refreshData(); alert('Berhasil disimpan!'); }); }} className="flex flex-col gap-4">
+             <form onSubmit={async (e) => { 
+                e.preventDefault(); 
+                if(!localSettings) return;
+                setIsSaving(true);
+                try {
+                  await dbService.saveSiteSettings(localSettings);
+                  alert('Pengaturan tampilan berhasil disimpan!');
+                  refreshData();
+                } catch(err: any) {
+                  alert('Gagal simpan: ' + err.message);
+                } finally {
+                  setIsSaving(false);
+                }
+             }} className="flex flex-col gap-4">
                 
                 <SectionHeader title="Umum & Hero" icon="home" />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -201,9 +231,11 @@ const AdminDashboard: React.FC = () => {
                 </div>
 
                 <SectionHeader title="Footer" icon="branding_watermark" />
-                <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Deskripsi Footer (Muncul di Bawah Logo Footer)</label><textarea className="h-28 border-2 rounded-2xl p-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold resize-none" value={localSettings?.footerDescription} onChange={e => localSettings && setLocalSettings({...localSettings, footerDescription: e.target.value})} /></div>
+                <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Deskripsi Footer</label><textarea className="h-28 border-2 rounded-2xl p-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold resize-none" value={localSettings?.footerDescription} onChange={e => localSettings && setLocalSettings({...localSettings, footerDescription: e.target.value})} /></div>
 
-                <button className="h-16 bg-primary text-[#111811] rounded-2xl font-black text-lg shadow-xl shadow-primary/20 mt-10 hover:scale-[1.01] transition-transform">SIMPAN SELURUH KONFIGURASI SITUS</button>
+                <button disabled={isSaving} className="h-16 bg-primary text-[#111811] rounded-2xl font-black text-lg shadow-xl shadow-primary/20 mt-10 hover:scale-[1.01] transition-transform disabled:opacity-50">
+                   {isSaving ? 'Menyimpan...' : 'SIMPAN SELURUH KONFIGURASI SITUS'}
+                </button>
              </form>
           </div>
         ) : activeTab === 'cs' ? (
@@ -248,10 +280,23 @@ const AdminDashboard: React.FC = () => {
           <div className="max-w-md mx-auto bg-white dark:bg-[#1a2e1a] p-10 rounded-[40px] border border-gray-100 dark:border-gray-800 shadow-2xl text-center">
              <div className="size-20 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-6"><span className="material-symbols-outlined text-4xl">admin_panel_settings</span></div>
              <h3 className="text-2xl font-black mb-6">Akses Admin</h3>
-             <form onSubmit={e => { e.preventDefault(); dbService.saveAdminCredentials(adminCreds).then(() => alert('Diperbarui!')); }} className="flex flex-col gap-4 text-left">
+             <form onSubmit={async (e) => { 
+                e.preventDefault(); 
+                setIsSaving(true);
+                try {
+                  await dbService.saveAdminCredentials(adminCreds);
+                  alert('Kredensial admin diperbarui!');
+                } catch(err: any) {
+                  alert('Gagal: ' + err.message);
+                } finally {
+                  setIsSaving(false);
+                }
+             }} className="flex flex-col gap-4 text-left">
                 <div className="flex flex-col gap-1"><label className="text-[10px] font-black uppercase text-gray-400 ml-2 tracking-widest">Username</label><input required className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold" value={adminCreds.username} onChange={e => setAdminCreds({...adminCreds, username: e.target.value})} /></div>
                 <div className="flex flex-col gap-1"><label className="text-[10px] font-black uppercase text-gray-400 ml-2 tracking-widest">Password</label><input required type="password" className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold" value={adminCreds.password} onChange={e => setAdminCreds({...adminCreds, password: e.target.value})} /></div>
-                <button className="h-16 bg-primary text-[#111811] rounded-2xl font-black mt-4 shadow-xl shadow-primary/20">SIMPAN AKSES</button>
+                <button disabled={isSaving} className="h-16 bg-primary text-[#111811] rounded-2xl font-black mt-4 shadow-xl shadow-primary/20 disabled:opacity-50">
+                   {isSaving ? 'Memproses...' : 'SIMPAN AKSES'}
+                </button>
              </form>
           </div>
         )}
@@ -276,7 +321,7 @@ const AdminDashboard: React.FC = () => {
                    <div className="flex flex-col gap-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Kategori</label><input required className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold" value={editingProduct?.category || ''} onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })} /></div>
                    <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Deskripsi Produk</label><textarea required className="h-32 border-2 rounded-2xl p-6 bg-gray-50 dark:bg-black/20 outline-none focus:border-primary font-bold resize-none" value={editingProduct?.description || ''} onChange={e => setEditingProduct({ ...editingProduct, description: e.target.value })} /></div>
                    
-                   {/* COVER PHOTO - DUAL INPUT */}
+                   {/* COVER PHOTO */}
                    <div className="flex flex-col gap-4 border-2 border-gray-100 dark:border-gray-800 p-8 rounded-[32px] bg-gray-50/50 dark:bg-black/10 md:col-span-2">
                      <h4 className="font-black text-xs uppercase tracking-widest text-primary">Foto Sampul Utama</h4>
                      <div className="flex flex-col md:flex-row gap-8 items-center">
@@ -295,7 +340,7 @@ const AdminDashboard: React.FC = () => {
                      </div>
                    </div>
 
-                   {/* GALERI TAMBAHAN (MAX 9) */}
+                   {/* GALERI TAMBAHAN */}
                    <div className="md:col-span-2 space-y-4">
                      <div className="flex items-center justify-between">
                         <h4 className="font-black text-xs uppercase tracking-widest text-primary">Galeri Media Tambahan ({editingProduct?.gallery?.length || 0}/9)</h4>
@@ -335,13 +380,12 @@ const AdminDashboard: React.FC = () => {
                      <div className="space-y-3">
                        {editingProduct?.variations?.map((v) => (
                          <div key={v.id} className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-gray-50 dark:bg-black/20 p-4 rounded-2xl items-center border border-gray-100 dark:border-gray-800">
-                           <input placeholder="Label (ex: Warna Merah)" className="bg-white dark:bg-black/20 border-none rounded-xl h-12 px-4 font-bold text-sm" value={v.name} onChange={e => setEditingProduct(p => ({...p, variations: p?.variations?.map(it => it.id === v.id ? {...it, name: e.target.value} : it)}))} />
-                           <input type="number" placeholder="Harga" className="bg-white dark:bg-black/20 border-none rounded-xl h-12 px-4 font-bold text-sm" value={v.price} onChange={e => setEditingProduct(p => ({...p, variations: p?.variations?.map(it => it.id === v.id ? {...it, price: Number(e.target.value)} : it)}))} />
-                           <input type="number" placeholder="Stok" className="bg-white dark:bg-black/20 border-none rounded-xl h-12 px-4 font-bold text-sm" value={v.stock} onChange={e => setEditingProduct(p => ({...p, variations: p?.variations?.map(it => it.id === v.id ? {...it, stock: Number(e.target.value)} : it)}))} />
+                           <input required placeholder="Label Varian" className="bg-white dark:bg-black/20 border-none rounded-xl h-12 px-4 font-bold text-sm" value={v.name} onChange={e => setEditingProduct(p => ({...p, variations: p?.variations?.map(it => it.id === v.id ? {...it, name: e.target.value} : it)}))} />
+                           <input required type="number" placeholder="Harga" className="bg-white dark:bg-black/20 border-none rounded-xl h-12 px-4 font-bold text-sm" value={v.price} onChange={e => setEditingProduct(p => ({...p, variations: p?.variations?.map(it => it.id === v.id ? {...it, price: Number(e.target.value)} : it)}))} />
+                           <input required type="number" placeholder="Stok" className="bg-white dark:bg-black/20 border-none rounded-xl h-12 px-4 font-bold text-sm" value={v.stock} onChange={e => setEditingProduct(p => ({...p, variations: p?.variations?.map(it => it.id === v.id ? {...it, stock: Number(e.target.value)} : it)}))} />
                            <button type="button" onClick={() => setEditingProduct(p => ({...p, variations: p?.variations?.filter(it => it.id !== v.id)}))} className="text-red-500 hover:text-red-700 font-bold text-[10px] uppercase">Hapus</button>
                          </div>
                        ))}
-                       {(!editingProduct?.variations || editingProduct.variations.length === 0) && <div className="p-4 border-2 border-dashed border-gray-100 rounded-2xl text-center text-[10px] font-black uppercase text-gray-400">Minimal 1 variasi harga diperlukan.</div>}
                      </div>
                    </div>
                    
@@ -350,16 +394,48 @@ const AdminDashboard: React.FC = () => {
                      <span className="font-black text-[10px] uppercase tracking-widest">Pin di Beranda</span>
                    </label>
                  </div>
-                 <button type="submit" disabled={isUploading} className="h-16 bg-primary text-[#111811] rounded-[24px] font-black text-xl shadow-2xl shadow-primary/40 hover:scale-[1.02] transition-all disabled:opacity-50 mt-4">SIMPAN DATA PRODUK</button>
+                 <button type="submit" disabled={isUploading || isSaving} className="h-16 bg-primary text-[#111811] rounded-[24px] font-black text-xl shadow-2xl shadow-primary/40 hover:scale-[1.02] transition-all disabled:opacity-50 mt-4">
+                   {isSaving ? 'Menyimpan...' : 'SIMPAN DATA PRODUK'}
+                 </button>
                </form>
              ) : activeTab === 'cs' ? (
-               <form onSubmit={e => { e.preventDefault(); if(editingCS) dbService.saveCSContact(editingCS as CSContact).then(() => { refreshData(); setIsModalOpen(false); }); }} className="flex flex-col gap-6">
+               <form onSubmit={async (e) => { 
+                  e.preventDefault(); 
+                  if(!editingCS) return;
+                  setIsSaving(true);
+                  try {
+                    await dbService.saveCSContact(editingCS as CSContact);
+                    alert('Kontak CS berhasil disimpan!');
+                    refreshData();
+                    setIsModalOpen(false);
+                  } catch(err: any) {
+                    alert('Gagal simpan: ' + err.message);
+                  } finally {
+                    setIsSaving(false);
+                  }
+               }} className="flex flex-col gap-6">
                   <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-2">Nama Admin CS</label><input required placeholder="Contoh: Admin Siska" className="h-16 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 focus:border-primary outline-none font-bold text-lg" value={editingCS?.name || ''} onChange={e => setEditingCS({ ...editingCS, name: e.target.value })} /></div>
                   <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-2">No WA (Awali 62)</label><input required placeholder="628..." className="h-16 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 focus:border-primary outline-none font-bold text-lg" value={editingCS?.phoneNumber || ''} onChange={e => setEditingCS({ ...editingCS, phoneNumber: e.target.value })} /></div>
-                  <button className="h-16 bg-primary text-[#111811] rounded-2xl font-black text-xl shadow-xl shadow-primary/20">SIMPAN KONTAK</button>
+                  <button disabled={isSaving} className="h-16 bg-primary text-[#111811] rounded-2xl font-black text-xl shadow-xl shadow-primary/20 disabled:opacity-50">
+                    {isSaving ? 'Menyimpan...' : 'SIMPAN KONTAK'}
+                  </button>
                </form>
              ) : (
-               <form onSubmit={e => { e.preventDefault(); if(editingTestimonial) dbService.saveTestimonial(editingTestimonial as Testimonial).then(() => { refreshData(); setIsModalOpen(false); }); }} className="flex flex-col gap-8">
+               <form onSubmit={async (e) => { 
+                  e.preventDefault(); 
+                  if(!editingTestimonial) return;
+                  setIsSaving(true);
+                  try {
+                    await dbService.saveTestimonial(editingTestimonial as Testimonial);
+                    alert('Review berhasil disimpan!');
+                    refreshData();
+                    setIsModalOpen(false);
+                  } catch(err: any) {
+                    alert('Gagal simpan: ' + err.message);
+                  } finally {
+                    setIsSaving(false);
+                  }
+               }} className="flex flex-col gap-8">
                  <div className="flex flex-col md:flex-row gap-8 items-center border-2 border-gray-100 dark:border-gray-800 p-8 rounded-[32px] bg-gray-50/50 dark:bg-black/10">
                     <div className="relative aspect-[3/4] w-40 shrink-0 rounded-[24px] bg-white dark:bg-black/20 border-2 border-dashed border-gray-200 dark:border-gray-800 flex items-center justify-center overflow-hidden">
                         {editingTestimonial?.imageUrl ? <img src={editingTestimonial.imageUrl} className="w-full h-full object-cover" /> : <span className="material-symbols-outlined text-4xl text-gray-200">photo_camera</span>}
@@ -373,8 +449,10 @@ const AdminDashboard: React.FC = () => {
                         <input className="w-full h-14 border-2 rounded-xl px-4 font-bold text-sm bg-white dark:bg-black/40 focus:border-primary outline-none" placeholder="https://..." value={editingTestimonial?.imageUrl || ''} onChange={e => setEditingTestimonial({ ...editingTestimonial, imageUrl: e.target.value })} />
                     </div>
                  </div>
-                 <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2 tracking-widest">Identitas Pelanggan</label><input placeholder="Contoh: Kak Andi - Surabaya" className="h-16 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 focus:border-primary outline-none font-bold" value={editingTestimonial?.customerName || ''} onChange={e => setEditingTestimonial({ ...editingTestimonial, customerName: e.target.value })} /></div>
-                 <button className="h-16 bg-primary text-[#111811] rounded-2xl font-black text-xl shadow-xl shadow-primary/20">SIMPAN REVIEW</button>
+                 <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2 tracking-widest">Identitas Pelanggan</label><input placeholder="Kak Andi - Surabaya" className="h-16 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 focus:border-primary outline-none font-bold" value={editingTestimonial?.customerName || ''} onChange={e => setEditingTestimonial({ ...editingTestimonial, customerName: e.target.value })} /></div>
+                 <button disabled={isSaving} className="h-16 bg-primary text-[#111811] rounded-2xl font-black text-xl shadow-xl shadow-primary/20 disabled:opacity-50">
+                    {isSaving ? 'Menyimpan...' : 'SIMPAN REVIEW'}
+                 </button>
                </form>
              )}
           </div>

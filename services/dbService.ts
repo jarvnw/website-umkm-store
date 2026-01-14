@@ -10,9 +10,20 @@ const getEnv = (key: string): string => {
   return '';
 };
 
-// Pastikan VITE_NEON_API_URL adalah host database Anda (contoh: ep-cool-darkness-123456.us-east-2.aws.neon.tech)
-// Dan VITE_NEON_API_KEY adalah API Key / Password database Anda.
-const NEON_HOST = getEnv('VITE_NEON_API_URL').replace('https://', '').split('/')[0];
+/**
+ * Logika pembersihan Host Neon: 
+ * Menangani format: https://host, host, atau postgres://user:pass@host/db
+ */
+const rawUrl = getEnv('VITE_NEON_API_URL');
+let NEON_HOST = '';
+if (rawUrl) {
+  NEON_HOST = rawUrl
+    .replace('https://', '')
+    .replace('postgres://', '')
+    .split('@').pop()! // Ambil setelah @ jika ada
+    .split('/')[0];    // Ambil host saja sebelum path/db
+}
+
 const NEON_API_KEY = getEnv('VITE_NEON_API_KEY');
 
 const PRODUCTS_KEY = 'lumina_products';
@@ -39,12 +50,13 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   instagramUrl: '', tiktokUrl: '', facebookUrl: '', youtubeUrl: ''
 };
 
-/**
- * Fungsi Utama untuk menjalankan SQL di Neon via HTTP
- */
+// Fungsi pembantu untuk membersihkan string SQL
+const escapeSQL = (str: string) => (str || '').replace(/'/g, "''");
+const escapeJSON = (obj: any) => JSON.stringify(obj).replace(/'/g, "''");
+
 async function runQuery(sql: string) {
   if (!NEON_HOST || !NEON_API_KEY) {
-    console.warn("Neon Config Missing. Using LocalStorage only.");
+    console.warn("Neon Config Missing (VITE_NEON_API_URL / VITE_NEON_API_KEY).");
     return null;
   }
 
@@ -63,30 +75,32 @@ async function runQuery(sql: string) {
     return result.rows || [];
   } catch (e) {
     console.error('Neon SQL Error:', e);
-    return null;
+    throw e; // Lemparkan error agar bisa ditangkap di UI
   }
 }
 
 export const dbService = {
   async getProducts(): Promise<Product[]> {
-    const rows = await runQuery('SELECT * FROM products ORDER BY created_at DESC');
-    if (rows) {
-      const formatted = rows.map((r: any) => ({
-        id: r.id,
-        name: r.name,
-        description: r.description,
-        price: Number(r.price),
-        category: r.category,
-        image: r.image,
-        coverMedia: typeof r.cover_media === 'string' ? JSON.parse(r.cover_media) : r.cover_media,
-        gallery: typeof r.gallery === 'string' ? JSON.parse(r.gallery) : r.gallery,
-        variations: typeof r.variations === 'string' ? JSON.parse(r.variations) : r.variations,
-        isFeatured: Boolean(r.is_featured),
-        createdAt: Number(r.created_at)
-      }));
-      localStorage.setItem(PRODUCTS_KEY, JSON.stringify(formatted));
-      return formatted;
-    }
+    try {
+      const rows = await runQuery('SELECT * FROM products ORDER BY created_at DESC');
+      if (rows) {
+        const formatted = rows.map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          description: r.description,
+          price: Number(r.price),
+          category: r.category,
+          image: r.image,
+          coverMedia: typeof r.cover_media === 'string' ? JSON.parse(r.cover_media) : r.cover_media,
+          gallery: typeof r.gallery === 'string' ? JSON.parse(r.gallery) : r.gallery,
+          variations: typeof r.variations === 'string' ? JSON.parse(r.variations) : r.variations,
+          isFeatured: Boolean(r.is_featured),
+          createdAt: Number(r.created_at)
+        }));
+        localStorage.setItem(PRODUCTS_KEY, JSON.stringify(formatted));
+        return formatted;
+      }
+    } catch (e) {}
     const local = localStorage.getItem(PRODUCTS_KEY);
     return local ? JSON.parse(local) : [];
   },
@@ -96,14 +110,14 @@ export const dbService = {
       INSERT INTO products (id, name, description, price, category, image, cover_media, gallery, variations, is_featured, created_at)
       VALUES (
         '${p.id}', 
-        '${p.name.replace(/'/g, "''")}', 
-        '${p.description.replace(/'/g, "''")}', 
+        '${escapeSQL(p.name)}', 
+        '${escapeSQL(p.description)}', 
         ${p.price}, 
-        '${p.category}', 
-        '${p.image}', 
-        '${JSON.stringify(p.coverMedia)}', 
-        '${JSON.stringify(p.gallery)}', 
-        '${JSON.stringify(p.variations)}', 
+        '${escapeSQL(p.category)}', 
+        '${escapeSQL(p.image)}', 
+        '${escapeJSON(p.coverMedia)}', 
+        '${escapeJSON(p.gallery)}', 
+        '${escapeJSON(p.variations)}', 
         ${p.isFeatured}, 
         ${p.createdAt}
       )
@@ -126,17 +140,19 @@ export const dbService = {
   },
 
   async getCSContacts(): Promise<CSContact[]> {
-    const rows = await runQuery('SELECT * FROM cs_contacts');
-    if (rows) {
-      const formatted = rows.map((r: any) => ({
-        id: r.id,
-        name: r.name,
-        phoneNumber: r.phone_number,
-        isActive: Boolean(r.is_active)
-      }));
-      localStorage.setItem(CS_KEY, JSON.stringify(formatted));
-      return formatted;
-    }
+    try {
+      const rows = await runQuery('SELECT * FROM cs_contacts');
+      if (rows) {
+        const formatted = rows.map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          phoneNumber: r.phone_number,
+          isActive: Boolean(r.is_active)
+        }));
+        localStorage.setItem(CS_KEY, JSON.stringify(formatted));
+        return formatted;
+      }
+    } catch (e) {}
     const local = localStorage.getItem(CS_KEY);
     return local ? JSON.parse(local) : [];
   },
@@ -144,7 +160,7 @@ export const dbService = {
   async saveCSContact(c: CSContact): Promise<void> {
     const sql = `
       INSERT INTO cs_contacts (id, name, phone_number, is_active)
-      VALUES ('${c.id}', '${c.name.replace(/'/g, "''")}', '${c.phoneNumber}', ${c.isActive})
+      VALUES ('${c.id}', '${escapeSQL(c.name)}', '${c.phoneNumber}', ${c.isActive})
       ON CONFLICT (id) DO UPDATE SET
         name = EXCLUDED.name,
         phone_number = EXCLUDED.phone_number,
@@ -158,17 +174,19 @@ export const dbService = {
   },
 
   async getTestimonials(): Promise<Testimonial[]> {
-    const rows = await runQuery('SELECT * FROM testimonials');
-    if (rows) {
-      const formatted = rows.map((r: any) => ({
-        id: r.id,
-        imageUrl: r.image_url,
-        customerName: r.customer_name,
-        isActive: Boolean(r.is_active)
-      }));
-      localStorage.setItem(TESTIMONIALS_KEY, JSON.stringify(formatted));
-      return formatted;
-    }
+    try {
+      const rows = await runQuery('SELECT * FROM testimonials');
+      if (rows) {
+        const formatted = rows.map((r: any) => ({
+          id: r.id,
+          imageUrl: r.image_url,
+          customerName: r.customer_name,
+          isActive: Boolean(r.is_active)
+        }));
+        localStorage.setItem(TESTIMONIALS_KEY, JSON.stringify(formatted));
+        return formatted;
+      }
+    } catch (e) {}
     const local = localStorage.getItem(TESTIMONIALS_KEY);
     return local ? JSON.parse(local) : [];
   },
@@ -176,7 +194,7 @@ export const dbService = {
   async saveTestimonial(t: Testimonial): Promise<void> {
     const sql = `
       INSERT INTO testimonials (id, image_url, customer_name, is_active)
-      VALUES ('${t.id}', '${t.imageUrl}', '${(t.customerName || '').replace(/'/g, "''")}', ${t.isActive})
+      VALUES ('${t.id}', '${escapeSQL(t.imageUrl)}', '${escapeSQL(t.customerName || '')}', ${t.isActive})
       ON CONFLICT (id) DO UPDATE SET
         image_url = EXCLUDED.image_url,
         customer_name = EXCLUDED.customer_name,
@@ -190,12 +208,14 @@ export const dbService = {
   },
 
   async getSiteSettings(): Promise<SiteSettings> {
-    const rows = await runQuery("SELECT data FROM site_settings WHERE id = 'main_settings'");
-    if (rows && rows.length > 0) {
-      const settings = typeof rows[0].data === 'string' ? JSON.parse(rows[0].data) : rows[0].data;
-      localStorage.setItem(SITE_SETTINGS_KEY, JSON.stringify(settings));
-      return settings;
-    }
+    try {
+      const rows = await runQuery("SELECT data FROM site_settings WHERE id = 'main_settings'");
+      if (rows && rows.length > 0) {
+        const settings = typeof rows[0].data === 'string' ? JSON.parse(rows[0].data) : rows[0].data;
+        localStorage.setItem(SITE_SETTINGS_KEY, JSON.stringify(settings));
+        return settings;
+      }
+    } catch (e) {}
     const local = localStorage.getItem(SITE_SETTINGS_KEY);
     return local ? JSON.parse(local) : DEFAULT_SETTINGS;
   },
@@ -203,7 +223,7 @@ export const dbService = {
   async saveSiteSettings(settings: SiteSettings): Promise<void> {
     const sql = `
       INSERT INTO site_settings (id, data)
-      VALUES ('main_settings', '${JSON.stringify(settings)}')
+      VALUES ('main_settings', '${escapeJSON(settings)}')
       ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data;
     `;
     await runQuery(sql);
@@ -211,15 +231,17 @@ export const dbService = {
   },
 
   async getAdminCredentials(): Promise<AdminCredentials> {
-    const rows = await runQuery("SELECT username, password FROM admin_auth WHERE id = 'admin_config'");
-    if (rows && rows.length > 0) return { username: rows[0].username, password: rows[0].password };
+    try {
+      const rows = await runQuery("SELECT username, password FROM admin_auth WHERE id = 'admin_config'");
+      if (rows && rows.length > 0) return { username: rows[0].username, password: rows[0].password };
+    } catch (e) {}
     return { username: 'admin', password: 'admin123' };
   },
 
   async saveAdminCredentials(creds: AdminCredentials): Promise<void> {
     const sql = `
       INSERT INTO admin_auth (id, username, password)
-      VALUES ('admin_config', '${creds.username}', '${creds.password}')
+      VALUES ('admin_config', '${escapeSQL(creds.username)}', '${escapeSQL(creds.password)}')
       ON CONFLICT (id) DO UPDATE SET 
         username = EXCLUDED.username, 
         password = EXCLUDED.password;
