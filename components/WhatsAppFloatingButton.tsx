@@ -37,21 +37,10 @@ const WhatsAppFloatingButton: React.FC = () => {
         {/* Subtle pulse animation background */}
         <div className="absolute inset-0 bg-white/20 animate-ping opacity-20"></div>
         
-        {/* SVG WhatsApp Icon for better brand recognition */}
-        <svg 
-          className="size-8 relative z-10" 
-          viewBox="0 0 24 24" 
-          fill="none" 
-          stroke="currentColor" 
-          strokeWidth="2" 
-          strokeLinecap="round" 
-          strokeLinejoin="round"
-        >
-          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 1 1-7.6-11.7 8.5 8.5 0 0 1 4.7 1.4L22 3l-1.5 4.7a8.38 8.38 0 0 1 .5 3.8z" />
-          <path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1Z" fill="currentColor" />
-          <path d="M14 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1Z" fill="currentColor" />
-          <path d="M9 14s1 2 3 2 3-2 3-2" />
-        </svg>
+        {/* Updated Icon: Material Symbol for Customer Service */}
+        <span className="material-symbols-outlined text-4xl relative z-10 font-black">
+          support_agent
+        </span>
       </button>
     </div>
   );
