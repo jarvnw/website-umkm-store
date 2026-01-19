@@ -2,18 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { dbService } from '../../services/dbService';
+import { imageService } from '../../services/imageService';
 import { Product, CSContact, Media, Variation, SiteSettings, Testimonial, AdminCredentials } from '../../types';
 import { useStore, THEME_COLORS, FONT_THEMES } from '../../App';
-
-const getEnv = (key: string): string => {
-  // @ts-ignore
-  if (import.meta.env && import.meta.env[key]) return import.meta.env[key];
-  // @ts-ignore
-  if (typeof process !== 'undefined' && process.env && process.env[key]) return process.env[key];
-  return '';
-};
-
-const IK_PUBLIC_KEY = getEnv('VITE_IMAGEKIT_PUBLIC_KEY');
 
 const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'products' | 'site' | 'cs' | 'testimonials' | 'security' | 'social_proof'>('products');
@@ -24,6 +15,7 @@ const AdminDashboard: React.FC = () => {
   const [localSettings, setLocalSettings] = useState<SiteSettings | null>(null);
   const [adminCreds, setAdminCreds] = useState<AdminCredentials>({ username: '', password: '' });
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [showGuide, setShowGuide] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -42,30 +34,23 @@ const AdminDashboard: React.FC = () => {
     navigate('/admin/login');
   };
 
-  const uploadToImageKit = async (file: File): Promise<string> => {
-    if (!IK_PUBLIC_KEY) {
-      alert("Public Key ImageKit belum dikonfigurasi.");
-      throw new Error('Missing Public Key');
-    }
+  /**
+   * UPGRADED: Unified secure upload handler with progress reporting.
+   */
+  const handleFileUpload = async (file: File): Promise<string> => {
     setIsUploading(true);
+    setUploadProgress(0);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('fileName', file.name || `media_${Date.now()}`);
-      formData.append('publicKey', IK_PUBLIC_KEY);
-      formData.append('useUniqueFileName', 'true');
-      const response = await fetch('https://upload.imagekit.io/api/v1/files/upload', {
-        method: 'POST',
-        body: formData,
+      const response = await imageService.upload(file, (pct) => {
+        setUploadProgress(pct);
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.message || 'Gagal');
-      return result.url;
+      return response.url;
     } catch (error: any) {
-      alert(`Gagal upload: ${error.message}\n\nSilakan gunakan URL media manual.`);
+      alert(`Gagal upload: ${error.message}\n\nPastikan IMAGEKIT_PRIVATE_KEY sudah dikonfigurasi di server.`);
       throw error;
     } finally {
       setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -140,6 +125,16 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="px-4 md:px-10 lg:px-40 py-10 min-h-screen">
+      {/* Global Upload Progress Indicator */}
+      {isUploading && (
+        <div className="fixed top-0 left-0 right-0 z-[200] h-1.5 bg-gray-100 dark:bg-black/20">
+          <div 
+            className="h-full bg-primary transition-all duration-300 shadow-[0_0_10px_rgba(19,236,19,0.5)]" 
+            style={{ width: `${uploadProgress}%` }}
+          />
+        </div>
+      )}
+
       <div className="max-w-[1200px] mx-auto">
         <div className="flex flex-col md:flex-row items-center justify-between mb-10 gap-6">
           <div className="flex items-center gap-4">
@@ -148,7 +143,7 @@ const AdminDashboard: React.FC = () => {
             </div>
             <div>
               <h1 className="text-4xl font-black tracking-tighter">Pengaturan Toko</h1>
-              <p className="text-gray-400 font-bold uppercase text-[10px] tracking-[0.2em] mt-1">Control Panel v2.5</p>
+              <p className="text-gray-400 font-bold uppercase text-[10px] tracking-[0.2em] mt-1">Control Panel v2.6</p>
             </div>
           </div>
           <div className="flex gap-3">
@@ -219,9 +214,9 @@ const AdminDashboard: React.FC = () => {
                       <div className="flex items-center gap-4">
                          <div className="size-20 shrink-0 bg-white dark:bg-black/40 rounded-2xl overflow-hidden border border-dashed border-gray-200 dark:border-gray-800 flex items-center justify-center relative">
                             {localSettings?.logoUrl ? <img src={localSettings.logoUrl} className="w-full h-full object-contain" /> : <span className="material-symbols-outlined text-gray-300 font-black">image</span>}
-                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onChange={async (e) => {
+                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed" accept="image/*" disabled={isUploading} onChange={async (e) => {
                                const file = e.target.files?.[0];
-                               if(file && localSettings) { try { const url = await uploadToImageKit(file); setLocalSettings({...localSettings, logoUrl: url}); } catch(e) {} }
+                               if(file && localSettings) { try { const url = await handleFileUpload(file); setLocalSettings({...localSettings, logoUrl: url}); } catch(e) {} }
                             }} />
                          </div>
                          <input className="flex-1 h-12 border-2 rounded-xl px-4 font-black text-xs bg-white dark:bg-black/40 outline-none focus:border-primary" placeholder="URL Logo..." value={localSettings?.logoUrl || ''} onChange={e => localSettings && setLocalSettings({...localSettings, logoUrl: e.target.value})} />
@@ -232,9 +227,9 @@ const AdminDashboard: React.FC = () => {
                       <div className="flex items-center gap-4">
                          <div className="size-20 shrink-0 bg-white dark:bg-black/40 rounded-2xl overflow-hidden border border-dashed border-gray-200 dark:border-gray-800 flex items-center justify-center relative">
                             {localSettings?.faviconUrl ? <img src={localSettings.faviconUrl} className="size-10 object-contain" /> : <span className="material-symbols-outlined text-gray-300 text-3xl font-black">token</span>}
-                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/x-icon,image/png,image/svg+xml" onChange={async (e) => {
+                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed" accept="image/x-icon,image/png,image/svg+xml" disabled={isUploading} onChange={async (e) => {
                                const file = e.target.files?.[0];
-                               if(file && localSettings) { try { const url = await uploadToImageKit(file); setLocalSettings({...localSettings, faviconUrl: url}); } catch(e) {} }
+                               if(file && localSettings) { try { const url = await handleFileUpload(file); setLocalSettings({...localSettings, faviconUrl: url}); } catch(e) {} }
                             }} />
                          </div>
                          <input className="flex-1 h-12 border-2 rounded-xl px-4 font-black text-xs bg-white dark:bg-black/40 outline-none focus:border-primary" placeholder="URL Favicon..." value={localSettings?.faviconUrl || ''} onChange={e => localSettings && setLocalSettings({...localSettings, faviconUrl: e.target.value})} />
@@ -304,9 +299,9 @@ const AdminDashboard: React.FC = () => {
                       <div className="flex items-center gap-6">
                          <div className="size-24 shrink-0 bg-white dark:bg-black/40 rounded-3xl overflow-hidden border border-dashed border-gray-200 dark:border-gray-800 flex items-center justify-center relative shadow-sm">
                             {localSettings?.aboutSectionImage ? <img src={localSettings.aboutSectionImage} className="w-full h-full object-cover" /> : <span className="material-symbols-outlined text-gray-300 font-black">image</span>}
-                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onChange={async (e) => {
+                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed" accept="image/*" disabled={isUploading} onChange={async (e) => {
                                const file = e.target.files?.[0];
-                               if(file && localSettings) { try { const url = await uploadToImageKit(file); setLocalSettings({...localSettings, aboutSectionImage: url}); } catch(e) {} }
+                               if(file && localSettings) { try { const url = await handleFileUpload(file); setLocalSettings({...localSettings, aboutSectionImage: url}); } catch(e) {} }
                             }} />
                          </div>
                          <input className="flex-1 h-12 border-2 rounded-xl px-4 font-black text-xs bg-white dark:bg-black/40 outline-none focus:border-primary" placeholder="URL Gambar..." value={localSettings?.aboutSectionImage || ''} onChange={e => localSettings && setLocalSettings({...localSettings, aboutSectionImage: e.target.value})} />
@@ -499,12 +494,12 @@ const AdminDashboard: React.FC = () => {
                            {editingProduct?.coverMedia?.url ? (
                              editingProduct.coverMedia.type === 'video' ? <span className="material-symbols-outlined text-4xl text-primary">videocam</span> : <img src={editingProduct.coverMedia.url} className="absolute inset-0 w-full h-full object-contain" />
                            ) : <span className="material-symbols-outlined text-gray-300 font-black">media_output_lib</span>}
-                           <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*,video/*" onChange={async (e) => {
+                           <input type="file" className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed" accept="image/*,video/*" disabled={isUploading} onChange={async (e) => {
                              const file = e.target.files?.[0];
                              if(file) { 
                                try { 
                                  const type = file.type.startsWith('video/') ? 'video' : 'image';
-                                 const url = await uploadToImageKit(file); 
+                                 const url = await handleFileUpload(file); 
                                  setEditingProduct(p => ({ ...p, coverMedia: { type, url }, image: url })); 
                                } catch(e) {} 
                              }
@@ -535,12 +530,12 @@ const AdminDashboard: React.FC = () => {
                                     {m.url ? (
                                        m.type === 'video' ? <span className="material-symbols-outlined text-primary">play_circle</span> : <img src={m.url} className="w-full h-full object-cover" />
                                     ) : <span className="material-symbols-outlined text-gray-300">image</span>}
-                                    <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*,video/*" onChange={async (e) => {
+                                    <input type="file" className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed" accept="image/*,video/*" disabled={isUploading} onChange={async (e) => {
                                        const file = e.target.files?.[0];
                                        if(file) { 
                                           try { 
                                              const type = file.type.startsWith('video/') ? 'video' : 'image';
-                                             const url = await uploadToImageKit(file); 
+                                             const url = await handleFileUpload(file); 
                                              handleUpdateGalleryItem(idx, { type, url });
                                           } catch(e) {} 
                                        }
@@ -599,9 +594,9 @@ const AdminDashboard: React.FC = () => {
                  <div className="flex flex-col md:flex-row gap-6 items-center border-2 p-6 rounded-[32px] bg-gray-50 dark:bg-black/10">
                     <div className="relative aspect-[3/4] w-32 shrink-0 rounded-2xl bg-white dark:bg-black/20 border-2 border-dashed flex items-center justify-center overflow-hidden">
                         {editingTestimonial?.imageUrl ? <img src={editingTestimonial.imageUrl} className="w-full h-full object-cover" /> : <span className="material-symbols-outlined text-4xl text-gray-200">photo_camera</span>}
-                        <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onChange={async (e) => {
+                        <input type="file" className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed" accept="image/*" disabled={isUploading} onChange={async (e) => {
                           const file = e.target.files?.[0];
-                          if(file) { try { const url = await uploadToImageKit(file); setEditingTestimonial({...editingTestimonial, imageUrl: url}); } catch(e) {} }
+                          if(file) { try { const url = await handleFileUpload(file); setEditingTestimonial({...editingTestimonial, imageUrl: url}); } catch(e) {} }
                         }} />
                     </div>
                     <input className="flex-1 h-14 border-2 rounded-xl px-4 font-black text-sm" placeholder="Atau paste URL foto manual..." value={editingTestimonial?.imageUrl || ''} onChange={e => setEditingTestimonial({ ...editingTestimonial, imageUrl: e.target.value })} />
@@ -659,8 +654,8 @@ const AdminDashboard: React.FC = () => {
 
                 <div className="p-6 bg-gray-50 dark:bg-black/20 rounded-3xl border border-gray-100 dark:border-gray-800">
                    <h4 className="font-black text-primary uppercase text-[10px] tracking-widest mb-3">Cara Upload Gambar</h4>
-                   <p className="font-medium text-gray-500 dark:text-gray-400 mb-2">Upload media dari perangkat atau Copy-paste link dari ImageKit.</p>
-                   <p className="text-xs text-gray-400">Cara pertama adalah upload gambar dari galeri/penyimpanan perangkat. Jika tidak berhasil, gunakan cara copy paste media dari ImageKit seperti yang dijelaskan dalam panduan (pdf) pembelian.</p>
+                   <p className="font-medium text-gray-500 dark:text-gray-400 mb-2">Unggah media menggunakan mekanisme aman (HMAC Signed Upload).</p>
+                   <p className="text-xs text-gray-400">Sistem sekarang menggunakan autentikasi server-side untuk menjamin keamanan upload. Anda dapat melihat progres upload di bagian atas layar saat proses berlangsung.</p>
                 </div>
              </div>
 
