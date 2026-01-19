@@ -10,6 +10,7 @@ import CartSidebar from './components/CartSidebar';
 import ProductCard from './components/ProductCard';
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import AdminLogin from './pages/Admin/AdminLogin';
+import WhatsAppFloatingButton from './components/WhatsAppFloatingButton';
 import { PrivacyPolicy, TermsOfService } from './pages/LegalPages';
 
 // --- THEME COLORS MAPPING ---
@@ -712,6 +713,7 @@ const App: React.FC = () => {
           <Footer />
           <CartSidebarWrapper />
           <SocialProofPopup />
+          <WhatsAppFloatingButton />
         </div>
       </Router>
     </StoreProvider>
