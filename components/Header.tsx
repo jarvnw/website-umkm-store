@@ -85,11 +85,15 @@ const Header: React.FC<HeaderProps> = ({ onCartOpen, cartCount }) => {
       <div className={`fixed top-0 left-0 h-full w-[280px] bg-white dark:bg-background-dark shadow-2xl z-[101] transform transition-transform duration-300 md:hidden flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-800">
           <div className="flex items-center gap-2">
-             <div className="size-6 text-primary">
-                <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M44 4H30.6666V17.3334H17.3334V30.6666H4V44H44V4Z" fill="currentColor"></path>
-                </svg>
-              </div>
+             {siteSettings.logoUrl ? (
+                <img src={siteSettings.logoUrl} alt={siteSettings.siteName} className="h-6 w-auto object-contain" />
+              ) : (
+                <div className="size-6 text-primary">
+                   <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                     <path d="M44 4H30.6666V17.3334H17.3334V30.6666H4V44H44V4Z" fill="currentColor"></path>
+                   </svg>
+                 </div>
+              )}
               <h2 className="font-black text-lg">{siteSettings.siteName}</h2>
           </div>
           <button onClick={closeMobileMenu} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">

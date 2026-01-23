@@ -278,7 +278,19 @@ const AdminDashboard: React.FC = () => {
                   <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Nama Toko</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" value={localSettings?.siteName} onChange={e => localSettings && setLocalSettings({...localSettings, siteName: e.target.value})} /></div>
                   <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Hero Title</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" value={localSettings?.heroTitle} onChange={e => localSettings && setLocalSettings({...localSettings, heroTitle: e.target.value})} /></div>
                   <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Hero Subtitle</label><textarea className="h-24 border-2 rounded-2xl p-6 bg-gray-50 dark:bg-black/20 outline-none font-black resize-none" value={localSettings?.heroSubtitle} onChange={e => localSettings && setLocalSettings({...localSettings, heroSubtitle: e.target.value})} /></div>
-                  <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Hero Image URL</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" value={localSettings?.heroImage} onChange={e => localSettings && setLocalSettings({...localSettings, heroImage: e.target.value})} /></div>
+                  <div className="flex flex-col gap-4 md:col-span-2">
+                    <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">Hero Image</label>
+                    <div className="flex items-center gap-6">
+                       <div className="size-24 shrink-0 bg-white dark:bg-black/40 rounded-3xl overflow-hidden border border-dashed border-gray-200 dark:border-gray-800 flex items-center justify-center relative shadow-sm">
+                          {localSettings?.heroImage ? <img src={localSettings.heroImage} className="w-full h-full object-cover" /> : <span className="material-symbols-outlined text-gray-300 font-black">image</span>}
+                          <input type="file" className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed" accept="image/*" disabled={isUploading} onChange={async (e) => {
+                             const file = e.target.files?.[0];
+                             if(file && localSettings) { try { const url = await handleFileUpload(file); setLocalSettings({...localSettings, heroImage: url}); } catch(e) {} }
+                          }} />
+                       </div>
+                       <input className="flex-1 h-12 border-2 rounded-xl px-4 font-black text-xs bg-white dark:bg-black/40 outline-none focus:border-primary" placeholder="URL Hero Image..." value={localSettings?.heroImage || ''} onChange={e => localSettings && setLocalSettings({...localSettings, heroImage: e.target.value})} />
+                    </div>
+                  </div>
                 </div>
 
                 <SectionHeader title="Footer & Deskripsi" icon="vertical_align_bottom" />
