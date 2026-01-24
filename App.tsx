@@ -470,12 +470,42 @@ const ProductDetailPage: React.FC = () => {
     }
   }, [product]);
 
+  const relatedProducts = useMemo(() => {
+    if (!product || products.length === 0) return [];
+
+    const otherProducts = products.filter(p => p.id !== product.id);
+    
+    // (1) Same Category + Similar Price (90% - 120%)
+    const group1 = otherProducts.filter(p => 
+      p.category === product.category && 
+      p.price >= product.price * 0.9 && 
+      p.price <= product.price * 1.2
+    );
+
+    // (2) Same Category (but price not in 90%-120% range)
+    const group2 = otherProducts.filter(p => 
+      p.category === product.category && 
+      !group1.some(g => g.id === p.id)
+    );
+
+    // (3) Similar Price but Different Category
+    const group3 = otherProducts.filter(p => 
+      p.category !== product.category && 
+      p.price >= product.price * 0.9 && 
+      p.price <= product.price * 1.2
+    );
+
+    // Combine in priority order and unique
+    const combined = [...group1, ...group2, ...group3];
+    return combined.slice(0, 4);
+  }, [product, products]);
+
   if (!product) return <div className="p-20 text-center font-bold">Produk tidak ditemukan.</div>;
   const currentPrice = selectedVariation ? selectedVariation.price : product.price;
   const currentOriginalPrice = selectedVariation?.originalPrice || (selectedVariation ? undefined : product.originalPrice);
 
   return (
-    <div className="px-4 md:px-10 lg:px-40 py-20 flex justify-center">
+    <div className="px-4 md:px-10 lg:px-40 py-20 flex justify-center flex-col items-center">
       <div className="max-w-[1200px] w-full grid grid-cols-1 lg:grid-cols-2 gap-16">
         <div className="flex flex-col gap-4">
           <div className="aspect-square rounded-[32px] overflow-hidden bg-gray-50 dark:bg-black/20 border border-gray-100 dark:border-gray-800">
@@ -525,6 +555,21 @@ const ProductDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* RELATED PRODUCTS SECTION */}
+      {relatedProducts.length > 0 && (
+        <div className="max-w-[1200px] w-full mt-32">
+          <div className="flex items-center justify-between mb-10 border-b border-[#dbe6db] dark:border-[#2a3a2a] pb-6">
+            <div>
+              <h2 className="text-3xl font-black tracking-tight">Produk Terkait</h2>
+              <p className="text-gray-500 mt-2 font-medium">Lengkapi koleksi Anda dengan pilihan serupa.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {relatedProducts.map(p => <ProductCard key={p.id} product={p} />)}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
