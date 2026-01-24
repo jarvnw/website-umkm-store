@@ -1,5 +1,5 @@
 
-import { Product, CSContact, SiteSettings, Testimonial, AdminCredentials } from '../types';
+import { Product, CSContact, SiteSettings, Testimonial, AdminCredentials, FAQ } from '../types';
 import { neon } from '@neondatabase/serverless';
 
 const getEnv = (key: string): string => {
@@ -33,6 +33,7 @@ const sql = connectionString ? neon(connectionString) : null;
 const PRODUCTS_KEY = 'lumina_products';
 const CS_KEY = 'lumina_cs_contacts';
 const TESTIMONIALS_KEY = 'lumina_testimonials';
+const FAQS_KEY = 'lumina_faqs';
 const SITE_SETTINGS_KEY = 'lumina_site_settings';
 const ADMIN_KEY = 'lumina_admin_creds';
 
@@ -206,6 +207,54 @@ export const dbService = {
       localStorage.setItem(TESTIMONIALS_KEY, JSON.stringify(filtered));
     }
     if (sql) await sql`DELETE FROM testimonials WHERE id = ${id}`;
+  },
+
+  async getFaqs(): Promise<FAQ[]> {
+    if (!sql) return JSON.parse(localStorage.getItem(FAQS_KEY) || '[]');
+    try {
+      const rows = await sql`SELECT * FROM faqs ORDER BY sort_order ASC, created_at DESC`;
+      const formatted = rows.map((r: any) => ({
+        id: r.id,
+        question: r.question,
+        answer: r.answer,
+        isActive: Boolean(r.is_active),
+        sortOrder: Number(r.sort_order),
+        createdAt: Number(r.created_at)
+      }));
+      localStorage.setItem(FAQS_KEY, JSON.stringify(formatted));
+      return formatted;
+    } catch (e) {
+      return JSON.parse(localStorage.getItem(FAQS_KEY) || '[]');
+    }
+  },
+
+  async saveFaq(f: FAQ): Promise<void> {
+    const local = JSON.parse(localStorage.getItem(FAQS_KEY) || '[]');
+    const idx = local.findIndex((item: any) => item.id === f.id);
+    if (idx >= 0) local[idx] = f; else local.push(f);
+    localStorage.setItem(FAQS_KEY, JSON.stringify(local));
+
+    if (!sql) return;
+    const faqId = f.id || `faq_${Date.now()}`;
+    try {
+      await sql`
+        INSERT INTO faqs (id, question, answer, is_active, sort_order, created_at)
+        VALUES (${faqId}, ${f.question}, ${f.answer}, ${f.isActive}, ${f.sortOrder}, ${f.createdAt})
+        ON CONFLICT (id) DO UPDATE SET
+          question = EXCLUDED.question, answer = EXCLUDED.answer, is_active = EXCLUDED.is_active, sort_order = EXCLUDED.sort_order;
+      `;
+    } catch (e) {
+      console.error("Neon SaveFaq Error:", e);
+    }
+  },
+
+  async deleteFaq(id: string): Promise<void> {
+    const local = localStorage.getItem(FAQS_KEY);
+    if (local) {
+      const filtered = JSON.parse(local).filter((f: any) => f.id !== id);
+      localStorage.setItem(FAQS_KEY, JSON.stringify(filtered));
+    }
+    if (sql) await sql`DELETE FROM faqs WHERE id = ${id}`;
   },
 
   async getSiteSettings(): Promise<SiteSettings> {

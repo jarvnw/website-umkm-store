@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, createContext, useContext, useRef, useMemo } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useParams, useLocation, useNavigate } from 'react-router-dom';
-import { Product, CartItem, CSContact, Variation, SiteSettings, Testimonial, Media } from './types';
+import { Product, CartItem, CSContact, Variation, SiteSettings, Testimonial, Media, FAQ } from './types';
 import { dbService, DEFAULT_SETTINGS } from './services/dbService';
 import Header from './components/Header';
 import Hero from './components/Hero';
@@ -53,6 +53,7 @@ interface StoreContextType {
   clearCart: () => void;
   csContacts: CSContact[];
   testimonials: Testimonial[];
+  faqs: FAQ[];
   siteSettings: SiteSettings;
   refreshData: () => void;
   isCartOpen: boolean;
@@ -65,6 +66,51 @@ export const useStore = () => {
   const context = useContext(StoreContext);
   if (!context) throw new Error('useStore must be used within StoreProvider');
   return context;
+};
+
+// --- FAQ SECTION ---
+const FaqSection = () => {
+  const { faqs } = useStore();
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const activeFaqs = faqs.filter(f => f.isActive);
+
+  if (activeFaqs.length === 0) return null;
+
+  return (
+    <section className="px-4 md:px-10 lg:px-40 py-24 bg-background-light dark:bg-background-dark">
+      <div className="max-w-[800px] mx-auto">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl font-black tracking-tight mb-4">Pertanyaan Umum</h2>
+          <p className="text-gray-500 font-medium">Hal-hal yang sering ditanyakan pelanggan kami.</p>
+        </div>
+        <div className="space-y-4">
+          {activeFaqs.map((faq, index) => (
+            <div 
+              key={faq.id} 
+              className="bg-white dark:bg-[#1a2e1a] rounded-3xl border border-gray-100 dark:border-gray-800 overflow-hidden transition-all duration-300 shadow-sm"
+            >
+              <button 
+                onClick={() => setActiveIndex(activeIndex === index ? null : index)}
+                className="w-full px-8 py-6 flex items-center justify-between text-left group"
+              >
+                <span className={`text-lg font-black transition-colors ${activeIndex === index ? 'text-primary' : 'text-[#111811] dark:text-white group-hover:text-primary'}`}>
+                  {faq.question}
+                </span>
+                <span className={`material-symbols-outlined transition-transform duration-300 ${activeIndex === index ? 'rotate-180 text-primary' : 'text-gray-300'}`}>
+                  expand_more
+                </span>
+              </button>
+              <div className={`transition-all duration-300 ease-in-out ${activeIndex === index ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                <div className="px-8 pb-8 pt-2 text-gray-500 font-medium leading-relaxed border-t border-gray-50 dark:border-gray-800/50">
+                  {faq.answer}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
 };
 
 // --- SOCIAL PROOF POPUP ---
@@ -304,6 +350,8 @@ const HomePage: React.FC = () => {
           </div>
         </section>
       )}
+
+      <FaqSection />
     </div>
   );
 };
@@ -666,20 +714,23 @@ const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const [cart, setCart] = useState<CartItem[]>([]);
   const [csContacts, setCsContacts] = useState<CSContact[]>([]);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [faqs, setFaqs] = useState<FAQ[]>([]);
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   const refreshData = useCallback(async () => {
-    const [p, cs, s, t] = await Promise.all([
+    const [p, cs, s, t, f] = await Promise.all([
       dbService.getProducts(),
       dbService.getCSContacts(),
       dbService.getSiteSettings(),
-      dbService.getTestimonials()
+      dbService.getTestimonials(),
+      dbService.getFaqs()
     ]);
     setProducts(p);
     setCsContacts(cs);
     setSiteSettings(s);
     setTestimonials(t);
+    setFaqs(f);
   }, []);
 
   useEffect(() => {
@@ -747,7 +798,7 @@ const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   const value = {
     products, cart, addToCart, removeFromCart, updateCartQuantity, clearCart,
-    csContacts, testimonials, siteSettings, refreshData, isCartOpen, setIsCartOpen
+    csContacts, testimonials, faqs, siteSettings, refreshData, isCartOpen, setIsCartOpen
   };
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

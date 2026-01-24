@@ -47,6 +47,15 @@ export interface Testimonial {
   isActive: boolean;
 }
 
+export interface FAQ {
+  id: string;
+  question: string;
+  answer: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: number;
+}
+
 export interface UserInfo {
   name: string;
   address: string;

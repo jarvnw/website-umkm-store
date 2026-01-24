@@ -3,15 +3,16 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { dbService } from '../../services/dbService';
 import { imageService } from '../../services/imageService';
-import { Product, CSContact, Media, Variation, SiteSettings, Testimonial, AdminCredentials } from '../../types';
+import { Product, CSContact, Media, Variation, SiteSettings, Testimonial, AdminCredentials, FAQ } from '../../types';
 import { useStore, THEME_COLORS, FONT_THEMES } from '../../App';
 
 const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'products' | 'site' | 'cs' | 'testimonials' | 'security' | 'social_proof'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'site' | 'cs' | 'testimonials' | 'faqs' | 'security' | 'social_proof'>('products');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
   const [editingCS, setEditingCS] = useState<Partial<CSContact> | null>(null);
   const [editingTestimonial, setEditingTestimonial] = useState<Partial<Testimonial> | null>(null);
+  const [editingFaq, setEditingFaq] = useState<Partial<FAQ> | null>(null);
   const [localSettings, setLocalSettings] = useState<SiteSettings | null>(null);
   const [adminCreds, setAdminCreds] = useState<AdminCredentials>({ username: '', password: '' });
   const [isUploading, setIsUploading] = useState(false);
@@ -20,7 +21,7 @@ const AdminDashboard: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
 
   const navigate = useNavigate();
-  const { refreshData, products, csContacts, siteSettings, testimonials } = useStore();
+  const { refreshData, products, csContacts, siteSettings, testimonials, faqs } = useStore();
 
   useEffect(() => {
     const isAuth = localStorage.getItem('lumina_admin_auth');
@@ -161,6 +162,7 @@ const AdminDashboard: React.FC = () => {
             { id: 'social_proof', label: 'Social Proof' },
             { id: 'cs', label: 'Admin WA' },
             { id: 'testimonials', label: 'Testimoni' },
+            { id: 'faqs', label: 'FAQ' },
             { id: 'security', label: 'Akses' }
           ].map(tab => (
             <button key={tab.id} className={`px-8 py-4 font-black text-xs uppercase tracking-[0.1em] transition-all relative whitespace-nowrap ${activeTab === tab.id ? 'text-primary' : 'text-gray-400 hover:text-gray-600'}`} onClick={() => setActiveTab(tab.id as any)}>
@@ -437,6 +439,28 @@ const AdminDashboard: React.FC = () => {
               </div>
             ))}
           </div>
+        ) : activeTab === 'faqs' ? (
+          <div className="space-y-4">
+             <button onClick={() => { setEditingFaq({ isActive: true, sortOrder: faqs.length }); setIsModalOpen(true); }} className="w-full p-8 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-[32px] text-gray-400 hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-4">
+               <span className="material-symbols-outlined font-black">help</span>
+               <p className="font-black text-xs uppercase tracking-widest">Tambah Pertanyaan FAQ</p>
+             </button>
+             {faqs.map(f => (
+               <div key={f.id} className="bg-white dark:bg-[#1a2e1a] p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm flex items-center justify-between">
+                 <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-1">
+                       <h4 className="font-black text-lg">{f.question}</h4>
+                       {!f.isActive && <span className="bg-gray-100 dark:bg-black/20 text-gray-400 text-[8px] font-black px-2 py-0.5 rounded-full">NONAKTIF</span>}
+                    </div>
+                    <p className="text-gray-400 text-sm font-medium line-clamp-1">{f.answer}</p>
+                 </div>
+                 <div className="flex gap-1 ml-4">
+                    <button onClick={() => { setEditingFaq(f); setIsModalOpen(true); }} className="size-10 flex items-center justify-center hover:text-primary transition-colors"><span className="material-symbols-outlined font-black">edit</span></button>
+                    <button onClick={() => { if(confirm('Hapus FAQ?')) dbService.deleteFaq(f.id).then(refreshData) }} className="size-10 flex items-center justify-center hover:text-red-500 transition-colors"><span className="material-symbols-outlined font-black">delete</span></button>
+                 </div>
+               </div>
+             ))}
+          </div>
         ) : (
           <div className="max-w-md mx-auto bg-white dark:bg-[#1a2e1a] p-10 rounded-[40px] border border-gray-100 dark:border-gray-800 shadow-2xl text-center">
              <h3 className="text-2xl font-black mb-6">Keamanan Akun</h3>
@@ -459,7 +483,9 @@ const AdminDashboard: React.FC = () => {
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setIsModalOpen(false)}></div>
           <div className="relative w-full max-w-4xl bg-white dark:bg-background-dark rounded-[40px] p-8 md:p-12 shadow-2xl overflow-y-auto max-h-[90vh] no-scrollbar">
              <div className="flex justify-between items-center mb-10">
-               <h2 className="text-3xl font-black tracking-tight">{activeTab === 'products' ? 'Data Produk' : 'Input Data'}</h2>
+               <h2 className="text-3xl font-black tracking-tight">
+                 {activeTab === 'products' ? 'Data Produk' : activeTab === 'faqs' ? 'Kelola FAQ' : 'Input Data'}
+               </h2>
                <button onClick={() => setIsModalOpen(false)} className="size-12 flex items-center justify-center rounded-full bg-gray-50 dark:bg-black/20 hover:bg-red-500 hover:text-white transition-colors"><span className="material-symbols-outlined">close</span></button>
              </div>
 
@@ -596,6 +622,35 @@ const AdminDashboard: React.FC = () => {
                   <input required placeholder="No WhatsApp (628...)" className="h-16 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black text-lg" value={editingCS?.phoneNumber || ''} onChange={e => setEditingCS({ ...editingCS, phoneNumber: e.target.value })} />
                   <button disabled={isSaving} className="h-16 bg-primary text-black rounded-2xl font-black text-xl shadow-xl shadow-primary/20">
                     {isSaving ? 'Menyimpan...' : 'SIMPAN KONTAK'}
+                  </button>
+               </form>
+             ) : activeTab === 'faqs' ? (
+               <form onSubmit={async (e) => { 
+                  e.preventDefault(); if(!editingFaq) return; setIsSaving(true);
+                  try { 
+                    const faq: FAQ = {
+                      id: editingFaq.id || `faq_${Date.now()}`,
+                      question: editingFaq.question || '',
+                      answer: editingFaq.answer || '',
+                      isActive: editingFaq.isActive ?? true,
+                      sortOrder: editingFaq.sortOrder ?? 0,
+                      createdAt: editingFaq.createdAt || Date.now()
+                    };
+                    await dbService.saveFaq(faq); 
+                    refreshData(); 
+                    setIsModalOpen(false); 
+                  } catch(err: any) { alert('Gagal: ' + err.message); } finally { setIsSaving(false); }
+               }} className="flex flex-col gap-6">
+                  <input required placeholder="Pertanyaan (Contoh: Berapa biaya ongkir?)" className="h-16 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black text-lg" value={editingFaq?.question || ''} onChange={e => setEditingFaq({ ...editingFaq, question: e.target.value })} />
+                  <textarea required placeholder="Jawaban Lengkap" className="h-48 border-2 rounded-2xl p-6 bg-gray-50 dark:bg-black/20 outline-none font-black resize-none" value={editingFaq?.answer || ''} onChange={e => setEditingFaq({ ...editingFaq, answer: e.target.value })} />
+                  <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-black/20 rounded-2xl">
+                    <label className="text-xs font-black uppercase tracking-widest text-gray-400">Status Aktif:</label>
+                    <button type="button" onClick={() => setEditingFaq({...editingFaq, isActive: !editingFaq?.isActive})} className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase transition-all ${editingFaq?.isActive ? 'bg-primary text-black' : 'bg-gray-200 dark:bg-gray-800 text-gray-500'}`}>
+                      {editingFaq?.isActive ? 'Aktif' : 'Nonaktif'}
+                    </button>
+                  </div>
+                  <button disabled={isSaving} className="h-16 bg-primary text-black rounded-2xl font-black text-xl shadow-xl shadow-primary/20">
+                    {isSaving ? 'Menyimpan...' : 'SIMPAN FAQ'}
                   </button>
                </form>
              ) : (
