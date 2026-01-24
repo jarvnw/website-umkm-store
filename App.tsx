@@ -463,41 +463,49 @@ const ProductDetailPage: React.FC = () => {
   const [activeMedia, setActiveMedia] = useState<Media | null>(null);
   const product = products.find(p => p.id === id);
 
+  // Initialize product state on mount or id change
   useEffect(() => {
     if (product) {
       setSelectedVariation(product.variations[0] || null);
       setActiveMedia(product.coverMedia);
     }
-  }, [product]);
+  }, [product, id]);
 
   const relatedProducts = useMemo(() => {
     if (!product || products.length === 0) return [];
 
     const otherProducts = products.filter(p => p.id !== product.id);
     
-    // (1) Same Category + Similar Price (90% - 120%)
+    // Priority Logic:
+    // 1. Same Category + Price similar (90% - 120%)
     const group1 = otherProducts.filter(p => 
       p.category === product.category && 
-      p.price >= product.price * 0.9 && 
-      p.price <= product.price * 1.2
+      p.price >= (product.price * 0.9) && 
+      p.price <= (product.price * 1.2)
     );
 
-    // (2) Same Category (but price not in 90%-120% range)
+    // 2. Same Category (but outside the 90%-120% range)
     const group2 = otherProducts.filter(p => 
       p.category === product.category && 
       !group1.some(g => g.id === p.id)
     );
 
-    // (3) Similar Price but Different Category
+    // 3. Similar Price but different category
     const group3 = otherProducts.filter(p => 
       p.category !== product.category && 
-      p.price >= product.price * 0.9 && 
-      p.price <= product.price * 1.2
+      p.price >= (product.price * 0.9) && 
+      p.price <= (product.price * 1.2)
     );
 
-    // Combine in priority order and unique
-    const combined = [...group1, ...group2, ...group3];
-    return combined.slice(0, 4);
+    // Combine in priority order, maintaining uniqueness
+    const results: Product[] = [];
+    [...group1, ...group2, ...group3].forEach(item => {
+      if (!results.some(r => r.id === item.id)) {
+        results.push(item);
+      }
+    });
+
+    return results.slice(0, 4);
   }, [product, products]);
 
   if (!product) return <div className="p-20 text-center font-bold">Produk tidak ditemukan.</div>;
@@ -505,23 +513,23 @@ const ProductDetailPage: React.FC = () => {
   const currentOriginalPrice = selectedVariation?.originalPrice || (selectedVariation ? undefined : product.originalPrice);
 
   return (
-    <div className="px-4 md:px-10 lg:px-40 py-20 flex justify-center flex-col items-center">
+    <div className="px-4 md:px-10 lg:px-40 py-20 flex flex-col items-center">
       <div className="max-w-[1200px] w-full grid grid-cols-1 lg:grid-cols-2 gap-16">
         <div className="flex flex-col gap-4">
           <div className="aspect-square rounded-[32px] overflow-hidden bg-gray-50 dark:bg-black/20 border border-gray-100 dark:border-gray-800">
             {activeMedia?.type === 'video' ? (
               <video src={activeMedia.url} className="w-full h-full object-cover" autoPlay loop muted playsInline />
             ) : (
-              <img src={activeMedia?.url || product.image} className="w-full h-full object-cover" />
+              <img src={activeMedia?.url || product.image} className="w-full h-full object-cover" alt={product.name} />
             )}
           </div>
-          <div className="flex gap-3 overflow-x-auto no-scrollbar">
+          <div className="flex gap-3 overflow-x-auto no-scrollbar py-2">
             {[product.coverMedia, ...product.gallery].map((m, i) => (
               <button key={i} onClick={() => setActiveMedia(m)} className={`size-20 shrink-0 rounded-2xl overflow-hidden border-2 transition-all ${activeMedia?.url === m.url ? 'border-primary' : 'border-transparent'}`}>
                 {m.type === 'video' ? (
                    <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800"><span className="material-symbols-outlined text-primary">play_circle</span></div>
                 ) : (
-                   <img src={m.url} className="w-full h-full object-cover" />
+                   <img src={m.url} className="w-full h-full object-cover" alt={`Gallery ${i}`} />
                 )}
               </button>
             ))}
@@ -558,7 +566,7 @@ const ProductDetailPage: React.FC = () => {
 
       {/* RELATED PRODUCTS SECTION */}
       {relatedProducts.length > 0 && (
-        <div className="max-w-[1200px] w-full mt-32">
+        <div className="max-w-[1200px] w-full mt-32 animate-in fade-in slide-in-from-bottom-8 duration-700">
           <div className="flex items-center justify-between mb-10 border-b border-[#dbe6db] dark:border-[#2a3a2a] pb-6">
             <div>
               <h2 className="text-3xl font-black tracking-tight">Produk Terkait</h2>
@@ -588,7 +596,7 @@ const AboutPage: React.FC = () => {
              <p className="text-gray-500 leading-relaxed font-medium whitespace-pre-line">{siteSettings.aboutSectionDesc}</p>
           </div>
           <div className="flex-1 aspect-video md:aspect-square rounded-[40px] overflow-hidden shadow-2xl">
-             <img src={siteSettings.aboutSectionImage} className="w-full h-full object-cover" />
+             <img src={siteSettings.aboutSectionImage} className="w-full h-full object-cover" alt="About" />
           </div>
        </div>
     </div>
@@ -631,7 +639,7 @@ const ContactPage: React.FC = () => {
                   { name: 'YouTube', url: siteSettings.youtubeUrl, icon: 'https://cdn-icons-png.flaticon.com/512/1384/1384060.png' }
                 ].filter(s => s.url).map((social, i) => (
                   <a key={i} href={social.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-black/20 rounded-2xl hover:scale-105 transition-transform">
-                     <img src={social.icon} className="size-6 grayscale dark:invert" />
+                     <img src={social.icon} className="size-6 grayscale dark:invert" alt={social.name} />
                      <span className="font-bold text-sm">{social.name}</span>
                   </a>
                 ))}
@@ -676,7 +684,6 @@ const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   // Apply visual themes when settings change
   useEffect(() => {
     const color = THEME_COLORS[siteSettings.themeColor] || THEME_COLORS['Green'];
-    // FIX: Gunakan --primary bukan --color-primary agar sesuai dengan konfigurasi Tailwind di index.html
     document.documentElement.style.setProperty('--primary', color);
     
     const fonts = FONT_THEMES[siteSettings.themeFont] || FONT_THEMES['Default'];
