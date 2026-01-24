@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, createContext, useContext, useRef, useMemo } from 'react';
-import { HashRouter as Router, Routes, Route, Link, useParams, useLocation } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Link, useParams, useLocation, useNavigate } from 'react-router-dom';
 import { Product, CartItem, CSContact, Variation, SiteSettings, Testimonial, Media } from './types';
 import { dbService, DEFAULT_SETTINGS } from './services/dbService';
 import Header from './components/Header';
@@ -458,6 +458,7 @@ const ProductsPage: React.FC = () => {
 
 const ProductDetailPage: React.FC = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { products, addToCart } = useStore();
   const [selectedVariation, setSelectedVariation] = useState<Variation | null>(null);
   const [activeMedia, setActiveMedia] = useState<Media | null>(null);
@@ -514,6 +515,16 @@ const ProductDetailPage: React.FC = () => {
 
   return (
     <div className="px-4 md:px-10 lg:px-40 py-20 flex flex-col items-center">
+      <div className="max-w-[1200px] w-full mb-8 flex">
+        <button 
+          onClick={() => navigate(-1)} 
+          className="flex items-center gap-2 text-gray-500 hover:text-primary transition-colors font-black uppercase text-xs tracking-widest group"
+        >
+          <span className="material-symbols-outlined transition-transform group-hover:-translate-x-1">arrow_back</span>
+          Kembali
+        </button>
+      </div>
+
       <div className="max-w-[1200px] w-full grid grid-cols-1 lg:grid-cols-2 gap-16">
         <div className="flex flex-col gap-4">
           <div className="aspect-square rounded-[32px] overflow-hidden bg-gray-50 dark:bg-black/20 border border-gray-100 dark:border-gray-800">
