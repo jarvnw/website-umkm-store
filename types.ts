@@ -56,6 +56,15 @@ export interface FAQ {
   createdAt: number;
 }
 
+export interface BenefitItem {
+  id: string;
+  icon: string;
+  title: string;
+  subtitle: string;
+  isActive: boolean;
+  sortOrder: number;
+}
+
 export interface UserInfo {
   name: string;
   address: string;

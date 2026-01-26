@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, createContext, useContext, useRef, useMemo } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useParams, useLocation, useNavigate } from 'react-router-dom';
-import { Product, CartItem, CSContact, Variation, SiteSettings, Testimonial, Media, FAQ } from './types';
+import { Product, CartItem, CSContact, Variation, SiteSettings, Testimonial, Media, FAQ, BenefitItem } from './types';
 import { dbService, DEFAULT_SETTINGS } from './services/dbService';
 import Header from './components/Header';
 import Hero from './components/Hero';
@@ -54,6 +54,7 @@ interface StoreContextType {
   csContacts: CSContact[];
   testimonials: Testimonial[];
   faqs: FAQ[];
+  benefitItems: BenefitItem[];
   siteSettings: SiteSettings;
   refreshData: () => void;
   isCartOpen: boolean;
@@ -271,9 +272,10 @@ const PromotionSection = ({ settings }: { settings: SiteSettings }) => {
 // --- PAGES ---
 
 const HomePage: React.FC = () => {
-  const { products, testimonials, siteSettings } = useStore();
+  const { products, testimonials, siteSettings, benefitItems } = useStore();
   const featured = products.filter(p => p.isFeatured);
   const activeTestimonials = testimonials.filter(t => t.isActive);
+  const activeBenefits = benefitItems.filter(b => b.isActive);
 
   return (
     <div className="flex flex-col flex-1">
@@ -303,20 +305,17 @@ const HomePage: React.FC = () => {
 
       <section className="px-4 md:px-10 lg:px-40 py-20 bg-background-light dark:bg-background-dark/50">
         <div className="max-w-[1200px] mx-auto text-center">
-          <h2 className="text-4xl font-black mb-12 tracking-tight">Why Choose Us</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            {[
-              { icon: 'local_shipping', title: 'Fast Delivery', desc: 'Ships within 24 hours' },
-              { icon: 'verified_user', title: 'Quality Assured', desc: 'Handpicked premium items' },
-              { icon: 'forum', title: 'Easy Order', desc: 'Quick checkout via WhatsApp' },
-              { icon: 'support_agent', title: '24/7 Support', desc: 'Ready to help you anytime' }
-            ].map((item, i) => (
-              <div key={i} className="p-8 bg-white dark:bg-[#1a2e1a] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 transition-transform hover:-translate-y-2">
+          <h2 className="text-4xl font-black mb-12 tracking-tight">Mengapa Memilih Kami</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
+            {activeBenefits.length > 0 ? activeBenefits.map((item) => (
+              <div key={item.id} className="p-8 bg-white dark:bg-[#1a2e1a] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 transition-transform hover:-translate-y-2">
                 <span className="material-symbols-outlined text-primary text-4xl mb-4">{item.icon}</span>
                 <h3 className="text-xl font-black mb-2">{item.title}</h3>
-                <p className="text-gray-500 text-sm font-medium">{item.desc}</p>
+                <p className="text-gray-500 text-sm font-medium">{item.subtitle}</p>
               </div>
-            ))}
+            )) : (
+              <div className="col-span-full py-10 text-gray-400 font-bold">Layanan unggulan kami sedang dipersiapkan.</div>
+            )}
           </div>
         </div>
       </section>
@@ -715,22 +714,25 @@ const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const [csContacts, setCsContacts] = useState<CSContact[]>([]);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [faqs, setFaqs] = useState<FAQ[]>([]);
+  const [benefitItems, setBenefitItems] = useState<BenefitItem[]>([]);
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   const refreshData = useCallback(async () => {
-    const [p, cs, s, t, f] = await Promise.all([
+    const [p, cs, s, t, f, b] = await Promise.all([
       dbService.getProducts(),
       dbService.getCSContacts(),
       dbService.getSiteSettings(),
       dbService.getTestimonials(),
-      dbService.getFaqs()
+      dbService.getFaqs(),
+      dbService.getBenefitItems()
     ]);
     setProducts(p);
     setCsContacts(cs);
     setSiteSettings(s);
     setTestimonials(t);
     setFaqs(f);
+    setBenefitItems(b);
   }, []);
 
   useEffect(() => {
@@ -798,7 +800,7 @@ const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   const value = {
     products, cart, addToCart, removeFromCart, updateCartQuantity, clearCart,
-    csContacts, testimonials, faqs, siteSettings, refreshData, isCartOpen, setIsCartOpen
+    csContacts, testimonials, faqs, benefitItems, siteSettings, refreshData, isCartOpen, setIsCartOpen
   };
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

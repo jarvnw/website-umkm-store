@@ -1,5 +1,5 @@
 
-import { Product, CSContact, SiteSettings, Testimonial, AdminCredentials, FAQ } from '../types';
+import { Product, CSContact, SiteSettings, Testimonial, AdminCredentials, FAQ, BenefitItem } from '../types';
 import { neon } from '@neondatabase/serverless';
 
 const getEnv = (key: string): string => {
@@ -34,6 +34,7 @@ const PRODUCTS_KEY = 'lumina_products';
 const CS_KEY = 'lumina_cs_contacts';
 const TESTIMONIALS_KEY = 'lumina_testimonials';
 const FAQS_KEY = 'lumina_faqs';
+const BENEFITS_KEY = 'lumina_benefit_items';
 const SITE_SETTINGS_KEY = 'lumina_site_settings';
 const ADMIN_KEY = 'lumina_admin_creds';
 
@@ -255,6 +256,44 @@ export const dbService = {
       localStorage.setItem(FAQS_KEY, JSON.stringify(filtered));
     }
     if (sql) await sql`DELETE FROM faqs WHERE id = ${id}`;
+  },
+
+  async getBenefitItems(): Promise<BenefitItem[]> {
+    if (!sql) return JSON.parse(localStorage.getItem(BENEFITS_KEY) || '[]');
+    try {
+      const rows = await sql`SELECT * FROM benefit_items ORDER BY sort_order ASC`;
+      const formatted = rows.map((r: any) => ({
+        id: r.id,
+        icon: r.icon,
+        title: r.title,
+        subtitle: r.subtitle,
+        isActive: Boolean(r.is_active),
+        sortOrder: Number(r.sort_order)
+      }));
+      localStorage.setItem(BENEFITS_KEY, JSON.stringify(formatted));
+      return formatted;
+    } catch (e) {
+      return JSON.parse(localStorage.getItem(BENEFITS_KEY) || '[]');
+    }
+  },
+
+  async saveBenefitItem(b: BenefitItem): Promise<void> {
+    const local = JSON.parse(localStorage.getItem(BENEFITS_KEY) || '[]');
+    const idx = local.findIndex((item: any) => item.id === b.id);
+    if (idx >= 0) local[idx] = b; else local.push(b);
+    localStorage.setItem(BENEFITS_KEY, JSON.stringify(local));
+
+    if (!sql) return;
+    try {
+      await sql`
+        INSERT INTO benefit_items (id, icon, title, subtitle, is_active, sort_order)
+        VALUES (${b.id}, ${b.icon}, ${b.title}, ${b.subtitle}, ${b.isActive}, ${b.sortOrder})
+        ON CONFLICT (id) DO UPDATE SET
+          title = EXCLUDED.title, subtitle = EXCLUDED.subtitle, is_active = EXCLUDED.is_active;
+      `;
+    } catch (e) {
+      console.error("Neon SaveBenefit Error:", e);
+    }
   },
 
   async getSiteSettings(): Promise<SiteSettings> {

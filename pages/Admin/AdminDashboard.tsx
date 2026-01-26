@@ -3,16 +3,17 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { dbService } from '../../services/dbService';
 import { imageService } from '../../services/imageService';
-import { Product, CSContact, Media, Variation, SiteSettings, Testimonial, AdminCredentials, FAQ } from '../../types';
+import { Product, CSContact, Media, Variation, SiteSettings, Testimonial, AdminCredentials, FAQ, BenefitItem } from '../../types';
 import { useStore, THEME_COLORS, FONT_THEMES } from '../../App';
 
 const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'products' | 'site' | 'cs' | 'testimonials' | 'faqs' | 'security' | 'social_proof'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'site' | 'cs' | 'testimonials' | 'faqs' | 'benefits' | 'security' | 'social_proof'>('products');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
   const [editingCS, setEditingCS] = useState<Partial<CSContact> | null>(null);
   const [editingTestimonial, setEditingTestimonial] = useState<Partial<Testimonial> | null>(null);
   const [editingFaq, setEditingFaq] = useState<Partial<FAQ> | null>(null);
+  const [editingBenefit, setEditingBenefit] = useState<Partial<BenefitItem> | null>(null);
   const [localSettings, setLocalSettings] = useState<SiteSettings | null>(null);
   const [adminCreds, setAdminCreds] = useState<AdminCredentials>({ username: '', password: '' });
   const [isUploading, setIsUploading] = useState(false);
@@ -21,7 +22,7 @@ const AdminDashboard: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
 
   const navigate = useNavigate();
-  const { refreshData, products, csContacts, siteSettings, testimonials, faqs } = useStore();
+  const { refreshData, products, csContacts, siteSettings, testimonials, faqs, benefitItems } = useStore();
 
   useEffect(() => {
     const isAuth = localStorage.getItem('lumina_admin_auth');
@@ -162,6 +163,7 @@ const AdminDashboard: React.FC = () => {
             { id: 'social_proof', label: 'Social Proof' },
             { id: 'cs', label: 'Admin WA' },
             { id: 'testimonials', label: 'Testimoni' },
+            { id: 'benefits', label: 'Keunggulan' },
             { id: 'faqs', label: 'FAQ' },
             { id: 'security', label: 'Akses' }
           ].map(tab => (
@@ -409,6 +411,7 @@ const AdminDashboard: React.FC = () => {
                  <div className="flex items-center gap-4">
                     <div className="size-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-black">WA</div>
                     <div>
+                      {/* FIX: Added missing opening bracket for h4 tag */}
                       <h4 className="font-black text-lg">{c.name}</h4>
                       <p className="text-gray-400 font-bold">+{c.phoneNumber}</p>
                     </div>
@@ -438,6 +441,35 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
             ))}
+          </div>
+        ) : activeTab === 'benefits' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             {benefitItems.map(b => (
+               <div key={b.id} className="bg-white dark:bg-[#1a2e1a] p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm flex items-center justify-between">
+                 <div className="flex items-center gap-4">
+                    <div className="size-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+                       <span className="material-symbols-outlined">{b.icon}</span>
+                    </div>
+                    <div>
+                      <h4 className="font-black text-lg">{b.title}</h4>
+                      <p className="text-gray-400 text-xs font-medium">{b.subtitle}</p>
+                    </div>
+                 </div>
+                 <div className="flex items-center gap-2">
+                    <div 
+                       onClick={async () => {
+                          const updated = { ...b, isActive: !b.isActive };
+                          await dbService.saveBenefitItem(updated);
+                          refreshData();
+                       }}
+                       className={`w-12 h-6 rounded-full cursor-pointer relative transition-colors ${b.isActive ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-800'}`}
+                    >
+                       <div className={`absolute top-1 size-4 bg-white rounded-full transition-transform ${b.isActive ? 'translate-x-7' : 'translate-x-1'}`}></div>
+                    </div>
+                    <button onClick={() => { setEditingBenefit(b); setIsModalOpen(true); }} className="size-10 flex items-center justify-center hover:text-primary transition-colors"><span className="material-symbols-outlined font-black">edit</span></button>
+                 </div>
+               </div>
+             ))}
           </div>
         ) : activeTab === 'faqs' ? (
           <div className="space-y-4">
@@ -484,7 +516,7 @@ const AdminDashboard: React.FC = () => {
           <div className="relative w-full max-w-4xl bg-white dark:bg-background-dark rounded-[40px] p-8 md:p-12 shadow-2xl overflow-y-auto max-h-[90vh] no-scrollbar">
              <div className="flex justify-between items-center mb-10">
                <h2 className="text-3xl font-black tracking-tight">
-                 {activeTab === 'products' ? 'Data Produk' : activeTab === 'faqs' ? 'Kelola FAQ' : 'Input Data'}
+                 {activeTab === 'products' ? 'Data Produk' : activeTab === 'faqs' ? 'Kelola FAQ' : activeTab === 'benefits' ? 'Edit Keunggulan' : 'Input Data'}
                </h2>
                <button onClick={() => setIsModalOpen(false)} className="size-12 flex items-center justify-center rounded-full bg-gray-50 dark:bg-black/20 hover:bg-red-500 hover:text-white transition-colors"><span className="material-symbols-outlined">close</span></button>
              </div>
@@ -622,6 +654,27 @@ const AdminDashboard: React.FC = () => {
                   <input required placeholder="No WhatsApp (628...)" className="h-16 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black text-lg" value={editingCS?.phoneNumber || ''} onChange={e => setEditingCS({ ...editingCS, phoneNumber: e.target.value })} />
                   <button disabled={isSaving} className="h-16 bg-primary text-black rounded-2xl font-black text-xl shadow-xl shadow-primary/20">
                     {isSaving ? 'Menyimpan...' : 'SIMPAN KONTAK'}
+                  </button>
+               </form>
+             ) : activeTab === 'benefits' ? (
+                <form onSubmit={async (e) => { 
+                  e.preventDefault(); if(!editingBenefit) return; setIsSaving(true);
+                  try { 
+                    await dbService.saveBenefitItem(editingBenefit as BenefitItem); 
+                    refreshData(); 
+                    setIsModalOpen(false); 
+                  } catch(err: any) { alert('Gagal: ' + err.message); } finally { setIsSaving(false); }
+               }} className="flex flex-col gap-6">
+                  <div className="flex flex-col gap-2">
+                     <label className="text-xs font-black uppercase text-gray-400 ml-1">Judul Layanan Unggulan</label>
+                     <input required placeholder="Contoh: Pengiriman Cepat" className="h-16 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black text-lg" value={editingBenefit?.title || ''} onChange={e => setEditingBenefit({ ...editingBenefit, title: e.target.value })} />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                     <label className="text-xs font-black uppercase text-gray-400 ml-1">Sub-judul (Deskripsi Singkat)</label>
+                     <input required placeholder="Contoh: Barang sampai dalam 24 jam" className="h-16 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black text-lg" value={editingBenefit?.subtitle || ''} onChange={e => setEditingBenefit({ ...editingBenefit, subtitle: e.target.value })} />
+                  </div>
+                  <button disabled={isSaving} className="h-16 bg-primary text-black rounded-2xl font-black text-xl shadow-xl shadow-primary/20 mt-4">
+                    {isSaving ? 'Menyimpan...' : 'SIMPAN PERUBAHAN'}
                   </button>
                </form>
              ) : activeTab === 'faqs' ? (
