@@ -750,6 +750,13 @@ const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     const color = THEME_COLORS[siteSettings.themeColor] || THEME_COLORS['Green'];
     document.documentElement.style.setProperty('--primary', color);
     
+    // Set RGB components for components that need transparency (like the WhatsApp shadow)
+    const hex = color.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    document.documentElement.style.setProperty('--primary-rgb', `${r}, ${g}, ${b}`);
+    
     const fonts = FONT_THEMES[siteSettings.themeFont] || FONT_THEMES['Default'];
     document.documentElement.style.setProperty('--font-heading', fonts.heading);
     document.documentElement.style.setProperty('--font-body', fonts.body);

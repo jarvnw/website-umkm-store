@@ -31,7 +31,7 @@ const WhatsAppFloatingButton: React.FC = () => {
       {/* The Floating Button */}
       <button
         onClick={handleFloatingClick}
-        className="size-16 bg-primary text-[#111811] rounded-full shadow-[0_10px_30px_rgba(19,236,19,0.4)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300 relative overflow-hidden"
+        className="size-16 bg-primary text-[#111811] rounded-full shadow-[0_10px_30px_rgba(var(--primary-rgb),0.4)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300 relative overflow-hidden"
         aria-label="Chat with us on WhatsApp"
       >
         {/* Subtle pulse animation background */}

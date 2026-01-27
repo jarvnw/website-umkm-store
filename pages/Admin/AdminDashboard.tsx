@@ -411,7 +411,6 @@ const AdminDashboard: React.FC = () => {
                  <div className="flex items-center gap-4">
                     <div className="size-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-black">WA</div>
                     <div>
-                      {/* FIX: Added missing opening bracket for h4 tag */}
                       <h4 className="font-black text-lg">{c.name}</h4>
                       <p className="text-gray-400 font-bold">+{c.phoneNumber}</p>
                     </div>
