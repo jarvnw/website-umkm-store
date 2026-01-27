@@ -177,7 +177,7 @@ const SocialProofPopup = () => {
   return (
     <div className={`fixed bottom-6 left-6 z-[200] max-w-[320px] transition-all duration-700 transform ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0 pointer-events-none'}`}>
       <div className="bg-white dark:bg-[#1a2e1a] rounded-2xl p-3 shadow-2xl border border-gray-100 dark:border-gray-800 flex items-center gap-4 group">
-        <div className="size-14 shrink-0 rounded-xl overflow-hidden bg-gray-100 dark:bg-black/20 border border-gray-50 dark:border-gray-800">
+        <div className="size-14 shrink-0 rounded-xl overflow-hidden bg-gray-100 dark:bg-black/20 border border-gray-100 dark:border-gray-800">
            <img src={currentProof.product.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
         </div>
         <div className="flex-1">
@@ -306,15 +306,15 @@ const HomePage: React.FC = () => {
       <section className="px-4 md:px-10 lg:px-40 py-20 bg-background-light dark:bg-background-dark/50">
         <div className="max-w-[1200px] mx-auto text-center">
           <h2 className="text-4xl font-black mb-12 tracking-tight">Mengapa Memilih Kami</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
+          <div className="flex flex-wrap justify-center gap-6 md:gap-8">
             {activeBenefits.length > 0 ? activeBenefits.map((item) => (
-              <div key={item.id} className="p-8 bg-white dark:bg-[#1a2e1a] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 transition-transform hover:-translate-y-2">
+              <div key={item.id} className="p-8 bg-white dark:bg-[#1a2e1a] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 transition-transform hover:-translate-y-2 w-full sm:w-[calc(50%-1.5rem)] lg:w-[calc(25%-2rem)] min-w-[260px] max-w-[280px]">
                 <span className="material-symbols-outlined text-primary text-4xl mb-4">{item.icon}</span>
                 <h3 className="text-xl font-black mb-2">{item.title}</h3>
                 <p className="text-gray-500 text-sm font-medium">{item.subtitle}</p>
               </div>
             )) : (
-              <div className="col-span-full py-10 text-gray-400 font-bold">Layanan unggulan kami sedang dipersiapkan.</div>
+              <div className="w-full py-10 text-gray-400 font-bold">Layanan unggulan kami sedang dipersiapkan.</div>
             )}
           </div>
         </div>
