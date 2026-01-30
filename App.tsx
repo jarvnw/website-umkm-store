@@ -285,8 +285,8 @@ const HomePage: React.FC = () => {
         <div className="max-w-[1200px] w-full">
           <div className="flex items-end justify-between px-4 pb-8 border-b border-[#dbe6db] dark:border-[#2a3a2a]">
             <div>
-              <h2 className="text-[#111811] dark:text-white text-3xl font-black leading-tight">Featured Selection</h2>
-              <p className="text-[#618961] mt-2 font-medium">Quality Choices, Tailored for You</p>
+              <h2 className="text-[#111811] dark:text-white text-3xl font-black leading-tight">Produk Unggulan</h2>
+              <p className="text-[#618961] mt-2 font-medium">Pilihan Berkualitas Yang Paling Banyak Dicari</p>
             </div>
             <Link to="/products" className="text-primary font-black hover:underline mb-1 text-sm uppercase tracking-widest">View All</Link>
           </div>
