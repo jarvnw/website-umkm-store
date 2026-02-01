@@ -11,6 +11,11 @@ interface ProductCardProps {
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { addToCart } = useStore();
 
+  // Logic: Use product level originalPrice, or fallback to first variation's originalPrice
+  const displayPrice = product.price;
+  const displayOriginalPrice = product.originalPrice || product.variations?.[0]?.originalPrice;
+  const hasDiscount = displayOriginalPrice && displayOriginalPrice > displayPrice;
+
   return (
     <div className="flex flex-col group h-full">
       <div className="relative aspect-[4/5] rounded-2xl overflow-hidden mb-3 md:mb-4 shadow-sm border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-black/20">
@@ -50,10 +55,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         </Link>
         <div className="flex items-center justify-between mt-auto">
           <div className="flex flex-col">
-            {product.originalPrice && product.originalPrice > product.price && (
-              <p className="text-[10px] sm:text-xs text-gray-400 line-through">Rp {product.originalPrice.toLocaleString('id-ID')}</p>
+            {hasDiscount && (
+              <p className="text-[10px] sm:text-xs text-gray-400 line-through">Rp {displayOriginalPrice.toLocaleString('id-ID')}</p>
             )}
-            <p className="text-base sm:text-xl font-black text-primary">Rp {product.price.toLocaleString('id-ID')}</p>
+            <p className="text-base sm:text-xl font-black text-primary">Rp {displayPrice.toLocaleString('id-ID')}</p>
           </div>
         </div>
       </div>

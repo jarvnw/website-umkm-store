@@ -264,7 +264,7 @@ const AdminDashboard: React.FC = () => {
                      <input className="h-14 border-2 rounded-2xl px-6 bg-white dark:bg-black/40 outline-none focus:border-primary font-black" placeholder="Contoh: LIMITED TIME OFFER" value={localSettings?.promoLabel || ''} onChange={e => localSettings && setLocalSettings({...localSettings, promoLabel: e.target.value})} />
                    </div>
                    <div className="flex flex-col gap-2 md:col-span-2">
-                     <label className="text-[10px] font-black uppercase text-gray-400 ml-2">Judul Promo (Hapus untuk menyembunyikan)</label>
+                     <label className="text-[10px] font-black uppercase text-gray-400 ml-2">Judul Promo (Header Banner Saja)</label>
                      <input className="h-14 border-2 rounded-2xl px-6 bg-white dark:bg-black/40 outline-none focus:border-primary font-black" placeholder="Flash Sale: 30% Off Everything!" value={localSettings?.promoTitle || ''} onChange={e => localSettings && setLocalSettings({...localSettings, promoTitle: e.target.value})} />
                    </div>
                    <div className="flex flex-col gap-2 md:col-span-2">
@@ -527,8 +527,9 @@ const AdminDashboard: React.FC = () => {
                     <input required className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" placeholder="Kategori" value={editingProduct?.category || ''} onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })} />
                     <textarea required className="h-32 md:col-span-2 border-2 rounded-2xl p-6 bg-gray-50 dark:bg-black/20 outline-none font-black resize-none" placeholder="Deskripsi" value={editingProduct?.description || ''} onChange={e => setEditingProduct({ ...editingProduct, description: e.target.value })} />
                     <div className="flex flex-col gap-2">
-                       <label className="text-[10px] font-black uppercase text-gray-400 ml-2">Harga Utama (Coret jika ada promo)</label>
-                       <input type="number" className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" placeholder="Harga Coret (Original Price)" value={editingProduct?.originalPrice || ''} onChange={e => setEditingProduct({ ...editingProduct, originalPrice: Number(e.target.value) || undefined })} />
+                       <label className="text-[10px] font-black uppercase text-gray-400 ml-2">Harga Utama/Coret (Global)</label>
+                       <input type="number" className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" placeholder="Contoh: 150000" value={editingProduct?.originalPrice || ''} onChange={e => setEditingProduct({ ...editingProduct, originalPrice: Number(e.target.value) || undefined })} />
+                       <p className="text-[9px] text-gray-400 ml-2">*Akan dicoret jika angka ini lebih besar dari harga varian pertama.</p>
                     </div>
 
                     {/* FEATURED TOGGLE */}
@@ -632,7 +633,7 @@ const AdminDashboard: React.FC = () => {
                          <div key={v.id} className="grid grid-cols-1 md:grid-cols-5 gap-3 bg-gray-50 dark:bg-black/20 p-4 rounded-2xl items-center">
                            <input required placeholder="Nama Varian" className="bg-white dark:bg-black/20 rounded-xl h-12 px-4 font-black text-sm" value={v.name} onChange={e => setEditingProduct(p => ({...p, variations: p?.variations?.map(it => it.id === v.id ? {...it, name: e.target.value} : it)}))} />
                            <input required type="number" placeholder="Harga Jual" className="bg-white dark:bg-black/20 rounded-xl h-12 px-4 font-black text-sm" value={v.price} onChange={e => setEditingProduct(p => ({...p, variations: p?.variations?.map(it => it.id === v.id ? {...it, price: Number(e.target.value)} : it)}))} />
-                           <input type="number" placeholder="Harga Coret" className="bg-white dark:bg-black/20 rounded-xl h-12 px-4 font-black text-sm" value={v.originalPrice || ''} onChange={e => setEditingProduct(p => ({...p, variations: p?.variations?.map(it => it.id === v.id ? {...it, originalPrice: Number(e.target.value) || undefined} : it)}))} />
+                           <input type="number" placeholder="Harga Coret Varian" className="bg-white dark:bg-black/20 rounded-xl h-12 px-4 font-black text-sm" value={v.originalPrice || ''} onChange={e => setEditingProduct(p => ({...p, variations: p?.variations?.map(it => it.id === v.id ? {...it, originalPrice: Number(e.target.value) || undefined} : it)}))} />
                            <input required type="number" placeholder="Stok" className="bg-white dark:bg-black/20 rounded-xl h-12 px-4 font-black text-sm" value={v.stock} onChange={e => setEditingProduct(p => ({...p, variations: p?.variations?.map(it => it.id === v.id ? {...it, stock: Number(e.target.value)} : it)}))} />
                            <button type="button" onClick={() => setEditingProduct(p => ({...p, variations: p?.variations?.filter(it => it.id !== v.id)}))} className="text-red-500 font-black text-[10px] uppercase">Hapus</button>
                          </div>
