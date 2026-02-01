@@ -13,7 +13,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
   return (
     <div className="flex flex-col group h-full">
-      <div className="relative aspect-[4/5] rounded-2xl overflow-hidden mb-4 shadow-sm border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-black/20">
+      <div className="relative aspect-[4/5] rounded-2xl overflow-hidden mb-3 md:mb-4 shadow-sm border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-black/20">
         {product.coverMedia?.type === 'video' ? (
           <video 
             src={product.coverMedia.url} 
@@ -35,25 +35,25 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         
         <button 
           onClick={() => addToCart(product)}
-          className="absolute bottom-4 right-4 size-12 bg-white text-[#111811] rounded-full shadow-xl flex items-center justify-center opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all hover:bg-primary"
+          className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 size-8 sm:size-12 bg-white text-[#111811] rounded-full shadow-xl flex items-center justify-center opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all hover:bg-primary"
         >
-          <span className="material-symbols-outlined font-bold">add_shopping_cart</span>
+          <span className="material-symbols-outlined text-lg sm:text-2xl font-bold">add_shopping_cart</span>
         </button>
         
         <Link to={`/product/${product.id}`} className="absolute inset-0" />
       </div>
       
       <div className="flex-1 flex flex-col">
-        <span className="text-xs text-[#618961] font-black uppercase tracking-tighter mb-1">{product.category}</span>
-        <Link to={`/product/${product.id}`} className="text-lg font-bold hover:text-primary transition-colors line-clamp-1 mb-2">
+        <span className="text-[10px] sm:text-xs text-[#618961] font-black uppercase tracking-tighter mb-1">{product.category}</span>
+        <Link to={`/product/${product.id}`} className="text-sm sm:text-lg font-bold hover:text-primary transition-colors line-clamp-1 mb-1 md:mb-2">
           {product.name}
         </Link>
         <div className="flex items-center justify-between mt-auto">
           <div className="flex flex-col">
             {product.originalPrice && product.originalPrice > product.price && (
-              <p className="text-xs text-gray-400 line-through">Rp {product.originalPrice.toLocaleString('id-ID')}</p>
+              <p className="text-[10px] sm:text-xs text-gray-400 line-through">Rp {product.originalPrice.toLocaleString('id-ID')}</p>
             )}
-            <p className="text-xl font-black text-primary">Rp {product.price.toLocaleString('id-ID')}</p>
+            <p className="text-base sm:text-xl font-black text-primary">Rp {product.price.toLocaleString('id-ID')}</p>
           </div>
         </div>
       </div>

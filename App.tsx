@@ -285,13 +285,13 @@ const HomePage: React.FC = () => {
         <div className="max-w-[1200px] w-full">
           <div className="flex items-end justify-between px-4 pb-8 border-b border-[#dbe6db] dark:border-[#2a3a2a]">
             <div>
-              <h2 className="text-[#111811] dark:text-white text-3xl font-black leading-tight">Produk Unggulan</h2>
-              <p className="text-[#618961] mt-2 font-medium">Pilihan Berkualitas Yang Paling Banyak Dicari</p>
+              <h2 className="text-[#111811] dark:text-white text-3xl font-black leading-tight">Featured Selection</h2>
+              <p className="text-[#618961] mt-2 font-medium">Quality Choices, Tailored for You</p>
             </div>
             <Link to="/products" className="text-primary font-black hover:underline mb-1 text-sm uppercase tracking-widest">View All</Link>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 py-10">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8 py-10">
             {featured.length > 0 ? (
               featured.map(product => <ProductCard key={product.id} product={product} />)
             ) : (
@@ -487,7 +487,7 @@ const ProductsPage: React.FC = () => {
 
         {/* PRODUCTS GRID */}
         {filteredAndSorted.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 py-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8 py-4">
             {filteredAndSorted.map(product => <ProductCard key={product.id} product={product} />)}
           </div>
         ) : (
@@ -631,7 +631,7 @@ const ProductDetailPage: React.FC = () => {
               <p className="text-gray-500 mt-2 font-medium">Lengkapi koleksi Anda dengan pilihan serupa.</p>
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8">
             {relatedProducts.map(p => <ProductCard key={p.id} product={p} />)}
           </div>
         </div>
