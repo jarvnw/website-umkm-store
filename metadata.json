@@ -4,5 +4,7 @@
   "requestFramePermissions": [
     "camera",
     "geolocation"
-  ]
+  ],
+  "C7": [],
+  "aq": []
 }

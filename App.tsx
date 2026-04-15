@@ -59,6 +59,7 @@ interface StoreContextType {
   refreshData: () => void;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
+  isInitialLoading: boolean;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -717,22 +718,29 @@ const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const [benefitItems, setBenefitItems] = useState<BenefitItem[]>([]);
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   const refreshData = useCallback(async () => {
-    const [p, cs, s, t, f, b] = await Promise.all([
-      dbService.getProducts(),
-      dbService.getCSContacts(),
-      dbService.getSiteSettings(),
-      dbService.getTestimonials(),
-      dbService.getFaqs(),
-      dbService.getBenefitItems()
-    ]);
-    setProducts(p);
-    setCsContacts(cs);
-    setSiteSettings(s);
-    setTestimonials(t);
-    setFaqs(f);
-    setBenefitItems(b);
+    try {
+      const [p, cs, s, t, f, b] = await Promise.all([
+        dbService.getProducts(),
+        dbService.getCSContacts(),
+        dbService.getSiteSettings(),
+        dbService.getTestimonials(),
+        dbService.getFaqs(),
+        dbService.getBenefitItems()
+      ]);
+      setProducts(p);
+      setCsContacts(cs);
+      setSiteSettings(s);
+      setTestimonials(t);
+      setFaqs(f);
+      setBenefitItems(b);
+    } catch (e) {
+      console.error("Failed to load initial data:", e);
+    } finally {
+      setIsInitialLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -807,7 +815,8 @@ const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   const value = {
     products, cart, addToCart, removeFromCart, updateCartQuantity, clearCart,
-    csContacts, testimonials, faqs, benefitItems, siteSettings, refreshData, isCartOpen, setIsCartOpen
+    csContacts, testimonials, faqs, benefitItems, siteSettings, refreshData, isCartOpen, setIsCartOpen,
+    isInitialLoading
   };
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
@@ -816,30 +825,53 @@ const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 const App: React.FC = () => {
   return (
     <StoreProvider>
-      <Router>
-        <div className="min-h-screen bg-background-light dark:bg-background-dark text-[#111811] dark:text-white transition-colors">
-          <ScrollToTop />
-          <HeaderWrapper />
-          <main className="flex flex-col min-h-[calc(100vh-80px-400px)]">
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/products" element={<ProductsPage />} />
-              <Route path="/product/:id" element={<ProductDetailPage />} />
-              <Route path="/about" element={<AboutPage />} />
-              <Route path="/contact" element={<ContactPage />} />
-              <Route path="/admin/login" element={<AdminLogin />} />
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-              <Route path="/terms-of-service" element={<TermsOfService />} />
-            </Routes>
-          </main>
-          <Footer />
-          <CartSidebarWrapper />
-          <SocialProofPopup />
-          <WhatsAppFloatingButton />
-        </div>
-      </Router>
+      <AppContent />
     </StoreProvider>
+  );
+};
+
+const AppContent: React.FC = () => {
+  const { isInitialLoading } = useStore();
+
+  if (isInitialLoading) {
+    return (
+      <div className="fixed inset-0 bg-background-light dark:bg-background-dark flex flex-col items-center justify-center z-[9999]">
+        <div className="relative">
+          <div className="size-20 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+             <div className="size-10 bg-primary/10 rounded-full animate-pulse"></div>
+          </div>
+        </div>
+        <h2 className="mt-8 text-xl font-black text-primary animate-pulse tracking-tighter">Memuat Toko...</h2>
+        <p className="mt-2 text-gray-400 font-medium text-sm">Menyiapkan pengalaman belanja terbaik untuk Anda</p>
+      </div>
+    );
+  }
+
+  return (
+    <Router>
+      <div className="min-h-screen bg-background-light dark:bg-background-dark text-[#111811] dark:text-white transition-colors">
+        <ScrollToTop />
+        <HeaderWrapper />
+        <main className="flex flex-col min-h-[calc(100vh-80px-400px)]">
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/products" element={<ProductsPage />} />
+            <Route path="/product/:id" element={<ProductDetailPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/terms-of-service" element={<TermsOfService />} />
+          </Routes>
+        </main>
+        <Footer />
+        <CartSidebarWrapper />
+        <SocialProofPopup />
+        <WhatsAppFloatingButton />
+      </div>
+    </Router>
   );
 };
 
