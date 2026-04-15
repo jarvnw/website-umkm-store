@@ -104,6 +104,23 @@ export interface SiteSettings {
   isSocialProofEnabled: boolean;
   socialProofNames: string; // Newline separated names
   socialProofProductIds: string[]; // List of product IDs
+  // Home Section Titles
+  featuredTitle: string;
+  featuredSubtitle: string;
+  benefitsTitle: string;
+  benefitsSubtitle: string;
+  testimonialsTitle: string;
+  testimonialsSubtitle: string;
+  faqsTitle: string;
+  faqsSubtitle: string;
+  // Contact Page Titles
+  contactTitle: string;
+  contactSubtitle: string;
+  // Navigation Labels
+  navHome: string;
+  navProducts: string;
+  navAbout: string;
+  navContact: string;
 }
 
 export interface AdminCredentials {

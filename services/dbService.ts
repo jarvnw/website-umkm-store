@@ -64,7 +64,23 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   // Social Proof Defaults
   isSocialProofEnabled: false,
   socialProofNames: 'Budi\nSiti\nAndi\nRina\nDewi\nJoko\nLani',
-  socialProofProductIds: []
+  socialProofProductIds: [],
+  // Home Section Titles Defaults
+  featuredTitle: 'Featured Selection',
+  featuredSubtitle: 'Quality Choices, Tailored for You',
+  benefitsTitle: 'Mengapa Memilih Kami',
+  benefitsSubtitle: 'Keunggulan layanan dan produk kami untuk kepuasan Anda.',
+  testimonialsTitle: 'Happy Customers',
+  testimonialsSubtitle: 'What they say about our products and services',
+  faqsTitle: 'Pertanyaan Umum',
+  faqsSubtitle: 'Hal-hal yang sering ditanyakan pelanggan kami.',
+  contactTitle: 'Hubungi Kami',
+  contactSubtitle: 'Kami siap membantu Anda dengan pertanyaan atau pesanan Anda.',
+  // Navigation Labels Defaults
+  navHome: 'Home',
+  navProducts: 'Products',
+  navAbout: 'About Us',
+  navContact: 'Contact'
 };
 
 export const dbService = {

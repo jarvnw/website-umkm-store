@@ -223,7 +223,6 @@ const AdminDashboard: React.FC = () => {
                                if(file && localSettings) { try { const url = await handleFileUpload(file); setLocalSettings({...localSettings, logoUrl: url}); } catch(e) {} }
                             }} />
                          </div>
-                         <input className="flex-1 h-12 border-2 rounded-xl px-4 font-black text-xs bg-white dark:bg-black/40 outline-none focus:border-primary" placeholder="URL Logo..." value={localSettings?.logoUrl || ''} onChange={e => localSettings && setLocalSettings({...localSettings, logoUrl: e.target.value})} />
                       </div>
                    </div>
                    <div className="flex flex-col gap-4 p-6 bg-gray-50 dark:bg-black/20 rounded-3xl border border-gray-100 dark:border-gray-800">
@@ -236,7 +235,6 @@ const AdminDashboard: React.FC = () => {
                                if(file && localSettings) { try { const url = await handleFileUpload(file); setLocalSettings({...localSettings, faviconUrl: url}); } catch(e) {} }
                             }} />
                          </div>
-                         <input className="flex-1 h-12 border-2 rounded-xl px-4 font-black text-xs bg-white dark:bg-black/40 outline-none focus:border-primary" placeholder="URL Favicon..." value={localSettings?.faviconUrl || ''} onChange={e => localSettings && setLocalSettings({...localSettings, faviconUrl: e.target.value})} />
                       </div>
                    </div>
                 </div>
@@ -277,6 +275,14 @@ const AdminDashboard: React.FC = () => {
                    </div>
                 </div>
 
+                <SectionHeader title="Label Navigasi" icon="menu" />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+                  <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Home</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" value={localSettings?.navHome} onChange={e => localSettings && setLocalSettings({...localSettings, navHome: e.target.value})} /></div>
+                  <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Products</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" value={localSettings?.navProducts} onChange={e => localSettings && setLocalSettings({...localSettings, navProducts: e.target.value})} /></div>
+                  <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">About Us</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" value={localSettings?.navAbout} onChange={e => localSettings && setLocalSettings({...localSettings, navAbout: e.target.value})} /></div>
+                  <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Contact</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" value={localSettings?.navContact} onChange={e => localSettings && setLocalSettings({...localSettings, navContact: e.target.value})} /></div>
+                </div>
+
                 <SectionHeader title="Umum & Hero" icon="home" />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
                   <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Nama Toko</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" value={localSettings?.siteName} onChange={e => localSettings && setLocalSettings({...localSettings, siteName: e.target.value})} /></div>
@@ -292,9 +298,23 @@ const AdminDashboard: React.FC = () => {
                              if(file && localSettings) { try { const url = await handleFileUpload(file); setLocalSettings({...localSettings, heroImage: url}); } catch(e) {} }
                           }} />
                        </div>
-                       <input className="flex-1 h-12 border-2 rounded-xl px-4 font-black text-xs bg-white dark:bg-black/40 outline-none focus:border-primary" placeholder="URL Hero Image..." value={localSettings?.heroImage || ''} onChange={e => localSettings && setLocalSettings({...localSettings, heroImage: e.target.value})} />
                     </div>
                   </div>
+                </div>
+
+                <SectionHeader title="Judul & Sub-judul Halaman Home" icon="reorder" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10 p-8 bg-gray-50 dark:bg-black/10 rounded-[40px] border border-gray-100 dark:border-gray-800">
+                  <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Judul Produk Unggulan</label><input className="h-14 border-2 rounded-2xl px-6 bg-white dark:bg-black/40 outline-none font-black" value={localSettings?.featuredTitle} onChange={e => localSettings && setLocalSettings({...localSettings, featuredTitle: e.target.value})} /></div>
+                  <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Sub-judul Produk Unggulan</label><input className="h-14 border-2 rounded-2xl px-6 bg-white dark:bg-black/40 outline-none font-black" value={localSettings?.featuredSubtitle} onChange={e => localSettings && setLocalSettings({...localSettings, featuredSubtitle: e.target.value})} /></div>
+                  
+                  <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Judul Keunggulan (Benefits)</label><input className="h-14 border-2 rounded-2xl px-6 bg-white dark:bg-black/40 outline-none font-black" value={localSettings?.benefitsTitle} onChange={e => localSettings && setLocalSettings({...localSettings, benefitsTitle: e.target.value})} /></div>
+                  <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Sub-judul Keunggulan</label><input className="h-14 border-2 rounded-2xl px-6 bg-white dark:bg-black/40 outline-none font-black" value={localSettings?.benefitsSubtitle} onChange={e => localSettings && setLocalSettings({...localSettings, benefitsSubtitle: e.target.value})} /></div>
+                  
+                  <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Judul Testimoni</label><input className="h-14 border-2 rounded-2xl px-6 bg-white dark:bg-black/40 outline-none font-black" value={localSettings?.testimonialsTitle} onChange={e => localSettings && setLocalSettings({...localSettings, testimonialsTitle: e.target.value})} /></div>
+                  <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Sub-judul Testimoni</label><input className="h-14 border-2 rounded-2xl px-6 bg-white dark:bg-black/40 outline-none font-black" value={localSettings?.testimonialsSubtitle} onChange={e => localSettings && setLocalSettings({...localSettings, testimonialsSubtitle: e.target.value})} /></div>
+                  
+                  <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Judul FAQ</label><input className="h-14 border-2 rounded-2xl px-6 bg-white dark:bg-black/40 outline-none font-black" value={localSettings?.faqsTitle} onChange={e => localSettings && setLocalSettings({...localSettings, faqsTitle: e.target.value})} /></div>
+                  <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Sub-judul FAQ</label><input className="h-14 border-2 rounded-2xl px-6 bg-white dark:bg-black/40 outline-none font-black" value={localSettings?.faqsSubtitle} onChange={e => localSettings && setLocalSettings({...localSettings, faqsSubtitle: e.target.value})} /></div>
                 </div>
 
                 <SectionHeader title="Footer & Deskripsi" icon="vertical_align_bottom" />
@@ -320,13 +340,15 @@ const AdminDashboard: React.FC = () => {
                                if(file && localSettings) { try { const url = await handleFileUpload(file); setLocalSettings({...localSettings, aboutSectionImage: url}); } catch(e) {} }
                             }} />
                          </div>
-                         <input className="flex-1 h-12 border-2 rounded-xl px-4 font-black text-xs bg-white dark:bg-black/40 outline-none focus:border-primary" placeholder="URL Gambar..." value={localSettings?.aboutSectionImage || ''} onChange={e => localSettings && setLocalSettings({...localSettings, aboutSectionImage: e.target.value})} />
                       </div>
                    </div>
                 </div>
 
                 <SectionHeader title="Kontak & Media Sosial" icon="contacts" />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                  <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Judul Halaman Kontak</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" value={localSettings?.contactTitle} onChange={e => localSettings && setLocalSettings({...localSettings, contactTitle: e.target.value})} /></div>
+                  <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Sub-judul Halaman Kontak</label><textarea className="h-24 border-2 rounded-2xl p-6 bg-gray-50 dark:bg-black/20 outline-none font-black resize-none" value={localSettings?.contactSubtitle} onChange={e => localSettings && setLocalSettings({...localSettings, contactSubtitle: e.target.value})} /></div>
+                  
                   <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Email Bisnis</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" value={localSettings?.contactEmail} onChange={e => localSettings && setLocalSettings({...localSettings, contactEmail: e.target.value})} /></div>
                   <div className="flex flex-col gap-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">WhatsApp Bisnis (62...)</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" value={localSettings?.contactPhone} onChange={e => localSettings && setLocalSettings({...localSettings, contactPhone: e.target.value})} /></div>
                   <div className="flex flex-col gap-2 md:col-span-2"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Alamat Fisik / Kota</label><input className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" value={localSettings?.contactAddress} onChange={e => localSettings && setLocalSettings({...localSettings, contactAddress: e.target.value})} /></div>
@@ -575,7 +597,6 @@ const AdminDashboard: React.FC = () => {
                              }
                            }} />
                         </div>
-                        <input className="flex-1 h-14 border-2 rounded-2xl px-6 bg-white dark:bg-black/40 outline-none font-black" placeholder="Atau paste URL media manual..." value={editingProduct?.coverMedia?.url || ''} onChange={e => setEditingProduct({ ...editingProduct, coverMedia: { type: editingProduct?.coverMedia?.type || 'image', url: e.target.value }, image: e.target.value })} />
                      </div>
                   </div>
 
@@ -611,7 +632,6 @@ const AdminDashboard: React.FC = () => {
                                        }
                                     }} />
                                  </div>
-                                 <input className="flex-1 h-10 border-2 rounded-xl px-4 bg-white dark:bg-black/40 outline-none font-bold text-[10px]" placeholder="URL media..." value={m.url} onChange={e => handleUpdateGalleryItem(idx, { url: e.target.value })} />
                               </div>
                            </div>
                         ))}
@@ -719,7 +739,6 @@ const AdminDashboard: React.FC = () => {
                           if(file) { try { const url = await handleFileUpload(file); setEditingTestimonial({...editingTestimonial, imageUrl: url}); } catch(e) {} }
                         }} />
                     </div>
-                    <input className="flex-1 h-14 border-2 rounded-xl px-4 font-black text-sm" placeholder="Atau paste URL foto manual..." value={editingTestimonial?.imageUrl || ''} onChange={e => setEditingTestimonial({ ...editingTestimonial, imageUrl: e.target.value })} />
                  </div>
                  <input placeholder="Nama Pelanggan" className="h-16 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" value={editingTestimonial?.customerName || ''} onChange={e => setEditingTestimonial({ ...editingTestimonial, customerName: e.target.value })} />
                  <textarea placeholder="Isi Review" className="h-32 border-2 rounded-2xl p-6 bg-gray-50 dark:bg-black/20 outline-none font-black resize-none" value={editingTestimonial?.description || ''} onChange={e => setEditingTestimonial({ ...editingTestimonial, description: e.target.value })} />

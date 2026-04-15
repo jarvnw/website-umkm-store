@@ -14,10 +14,10 @@ const Header: React.FC<HeaderProps> = ({ onCartOpen, cartCount }) => {
   const location = useLocation();
 
   const navLinks = [
-    { name: 'Home', path: '/' },
-    { name: 'Products', path: '/products' },
-    { name: 'About Us', path: '/about' },
-    { name: 'Contact', path: '/contact' },
+    { name: siteSettings.navHome, path: '/' },
+    { name: siteSettings.navProducts, path: '/products' },
+    { name: siteSettings.navAbout, path: '/about' },
+    { name: siteSettings.navContact, path: '/contact' },
   ];
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);

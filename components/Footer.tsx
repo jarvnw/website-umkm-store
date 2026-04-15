@@ -32,10 +32,10 @@ const Footer: React.FC = () => {
         <div className="md:pl-10">
           <h4 className="font-black mb-8 uppercase tracking-widest text-xs text-primary">Navigasi</h4>
           <ul className="flex flex-col gap-4 text-sm font-bold text-gray-500">
-            <li><Link to="/" className="hover:text-primary transition-colors">Beranda</Link></li>
-            <li><Link to="/products" className="hover:text-primary transition-colors">Semua Produk</Link></li>
-            <li><Link to="/about" className="hover:text-primary transition-colors">Tentang Kami</Link></li>
-            <li><Link to="/contact" className="hover:text-primary transition-colors">Kontak</Link></li>
+            <li><Link to="/" className="hover:text-primary transition-colors">{siteSettings.navHome}</Link></li>
+            <li><Link to="/products" className="hover:text-primary transition-colors">{siteSettings.navProducts}</Link></li>
+            <li><Link to="/about" className="hover:text-primary transition-colors">{siteSettings.navAbout}</Link></li>
+            <li><Link to="/contact" className="hover:text-primary transition-colors">{siteSettings.navContact}</Link></li>
           </ul>
         </div>
         

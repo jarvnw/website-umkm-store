@@ -72,7 +72,7 @@ export const useStore = () => {
 
 // --- FAQ SECTION ---
 const FaqSection = () => {
-  const { faqs } = useStore();
+  const { faqs, siteSettings } = useStore();
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const activeFaqs = faqs.filter(f => f.isActive);
 
@@ -82,8 +82,8 @@ const FaqSection = () => {
     <section className="px-4 md:px-10 lg:px-40 py-24 bg-background-light dark:bg-background-dark">
       <div className="max-w-[800px] mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-4xl font-black tracking-tight mb-4">Pertanyaan Umum</h2>
-          <p className="text-gray-500 font-medium">Hal-hal yang sering ditanyakan pelanggan kami.</p>
+          <h2 className="text-4xl font-black tracking-tight mb-4">{siteSettings.faqsTitle}</h2>
+          <p className="text-gray-500 font-medium">{siteSettings.faqsSubtitle}</p>
         </div>
         <div className="space-y-4">
           {activeFaqs.map((faq, index) => (
@@ -286,8 +286,8 @@ const HomePage: React.FC = () => {
         <div className="max-w-[1200px] w-full">
           <div className="flex items-end justify-between px-4 pb-8 border-b border-[#dbe6db] dark:border-[#2a3a2a]">
             <div>
-              <h2 className="text-[#111811] dark:text-white text-3xl font-black leading-tight">Featured Selection</h2>
-              <p className="text-[#618961] mt-2 font-medium">Quality Choices, Tailored for You</p>
+              <h2 className="text-[#111811] dark:text-white text-3xl font-black leading-tight">{siteSettings.featuredTitle}</h2>
+              <p className="text-[#618961] mt-2 font-medium">{siteSettings.featuredSubtitle}</p>
             </div>
             <Link to="/products" className="text-primary font-black hover:underline mb-1 text-sm uppercase tracking-widest">View All</Link>
           </div>
@@ -306,7 +306,8 @@ const HomePage: React.FC = () => {
 
       <section className="px-4 md:px-10 lg:px-40 py-20 bg-background-light dark:bg-background-dark/50">
         <div className="max-w-[1200px] mx-auto text-center">
-          <h2 className="text-4xl font-black mb-12 tracking-tight">Mengapa Memilih Kami</h2>
+          <h2 className="text-4xl font-black mb-4 tracking-tight">{siteSettings.benefitsTitle}</h2>
+          <p className="text-gray-500 font-medium mb-12">{siteSettings.benefitsSubtitle}</p>
           <div className="flex flex-wrap justify-center gap-6 md:gap-8">
             {activeBenefits.length > 0 ? activeBenefits.map((item) => (
               <div key={item.id} className="p-8 bg-white dark:bg-[#1a2e1a] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 transition-transform hover:-translate-y-2 w-full sm:w-[calc(50%-1.5rem)] lg:w-[calc(25%-2rem)] min-w-[260px] max-w-[280px]">
@@ -325,8 +326,8 @@ const HomePage: React.FC = () => {
         <section className="px-4 md:px-10 lg:px-40 py-24">
           <div className="max-w-[1200px] mx-auto">
             <div className="text-center mb-16">
-              <h2 className="text-4xl font-black tracking-tight mb-4">Happy Customers</h2>
-              <p className="text-gray-500 font-medium">What they say about our products and services</p>
+              <h2 className="text-4xl font-black tracking-tight mb-4">{siteSettings.testimonialsTitle}</h2>
+              <p className="text-gray-500 font-medium">{siteSettings.testimonialsSubtitle}</p>
             </div>
             <div className="columns-1 sm:columns-2 lg:columns-3 gap-8 space-y-8">
               {activeTestimonials.map((t) => (
@@ -668,8 +669,8 @@ const ContactPage: React.FC = () => {
     <div className="px-4 md:px-10 lg:px-40 py-24 flex justify-center">
        <div className="max-w-[1200px] w-full grid grid-cols-1 lg:grid-cols-2 gap-20">
           <div>
-             <h1 className="text-4xl font-black mb-8">Hubungi Kami</h1>
-             <p className="text-gray-500 mb-12 font-medium">Kami siap membantu Anda dengan pertanyaan atau pesanan Anda.</p>
+             <h1 className="text-4xl font-black mb-8">{siteSettings.contactTitle}</h1>
+             <p className="text-gray-500 mb-12 font-medium">{siteSettings.contactSubtitle}</p>
              <div className="space-y-8">
                 {[
                   { icon: 'mail', title: 'Email', value: siteSettings.contactEmail },
