@@ -1,34 +1,5 @@
 
 import { Product, CSContact, SiteSettings, Testimonial, AdminCredentials, FAQ, BenefitItem } from '../types';
-import { neon } from '@neondatabase/serverless';
-
-const getEnv = (key: string): string => {
-  try {
-    // @ts-ignore
-    if (typeof import.meta !== 'undefined' && import.meta.env) return import.meta.env[key] || '';
-    if (typeof process !== 'undefined' && process.env) return process.env[key] || '';
-  } catch (e) {}
-  return '';
-};
-
-/**
- * KONFIGURASI KONEKSI NEON
- */
-const NEON_HOST = getEnv('VITE_NEON_API_URL')
-  .replace('https://', '')
-  .replace('postgres://', '')
-  .replace('postgresql://', '')
-  .split('@').pop()!
-  .replace('-pooler', '')
-  .split('/')[0];
-
-const NEON_PASSWORD = getEnv('VITE_NEON_API_KEY');
-
-const connectionString = NEON_HOST && NEON_PASSWORD 
-  ? `postgres://neondb_owner:${NEON_PASSWORD}@${NEON_HOST}/neondb?sslmode=require`
-  : '';
-
-const sql = connectionString ? neon(connectionString) : null;
 
 const PRODUCTS_KEY = 'lumina_products';
 const CS_KEY = 'lumina_cs_contacts';
@@ -85,27 +56,34 @@ export const DEFAULT_SETTINGS: SiteSettings = {
 
 export const dbService = {
   async getProducts(): Promise<Product[]> {
-    if (!sql) return JSON.parse(localStorage.getItem(PRODUCTS_KEY) || '[]');
     try {
-      const rows = await sql`SELECT * FROM products ORDER BY created_at DESC`;
-      const formatted = rows.map((r: any) => ({
-        id: r.id,
-        name: r.name,
-        description: r.description,
-        price: Number(r.price),
-        originalPrice: r.original_price ? Number(r.original_price) : undefined,
-        category: r.category,
-        image: r.image,
-        coverMedia: typeof r.cover_media === 'string' ? JSON.parse(r.cover_media) : r.cover_media,
-        gallery: typeof r.gallery === 'string' ? JSON.parse(r.gallery) : r.gallery,
-        variations: typeof r.variations === 'string' ? JSON.parse(r.variations) : r.variations,
-        isFeatured: Boolean(r.is_featured),
-        createdAt: Number(r.created_at)
-      }));
-      localStorage.setItem(PRODUCTS_KEY, JSON.stringify(formatted));
-      return formatted;
+      const response = await fetch(`/api/products?cb=${Date.now()}`);
+      if (!response.ok) throw new Error(`API Error: ${response.status}`);
+      const text = await response.text();
+      try {
+        const rows = JSON.parse(text);
+        const formatted = rows.map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          description: r.description,
+          price: Number(r.price),
+          originalPrice: r.original_price ? Number(r.original_price) : undefined,
+          category: r.category,
+          image: r.image,
+          coverMedia: typeof r.cover_media === 'string' ? JSON.parse(r.cover_media) : r.cover_media,
+          gallery: typeof r.gallery === 'string' ? JSON.parse(r.gallery) : r.gallery,
+          variations: typeof r.variations === 'string' ? JSON.parse(r.variations) : r.variations,
+          isFeatured: Boolean(r.is_featured),
+          createdAt: Number(r.created_at)
+        }));
+        localStorage.setItem(PRODUCTS_KEY, JSON.stringify(formatted));
+        return formatted;
+      } catch (parseError) {
+        console.error('JSON Parse Error in getProducts. Response was:', text.substring(0, 500));
+        throw parseError;
+      }
     } catch (e) {
-      console.error('Neon GetProducts Error:', e);
+      console.error('API GetProducts Error:', e);
       return JSON.parse(localStorage.getItem(PRODUCTS_KEY) || '[]');
     }
   },
@@ -116,26 +94,12 @@ export const dbService = {
     if (idx >= 0) local[idx] = p; else local.push(p);
     localStorage.setItem(PRODUCTS_KEY, JSON.stringify(local));
 
-    if (!sql) return;
-
-    try {
-      await sql`
-        INSERT INTO products (id, name, description, price, original_price, category, image, cover_media, gallery, variations, is_featured, created_at)
-        VALUES (
-          ${p.id}, ${p.name}, ${p.description}, ${p.price}, ${p.originalPrice || null}, ${p.category}, ${p.image}, 
-          ${JSON.stringify(p.coverMedia)}, ${JSON.stringify(p.gallery)}, ${JSON.stringify(p.variations)}, 
-          ${p.isFeatured}, ${p.createdAt}
-        )
-        ON CONFLICT (id) DO UPDATE SET
-          name = EXCLUDED.name, description = EXCLUDED.description, price = EXCLUDED.price,
-          original_price = EXCLUDED.original_price, category = EXCLUDED.category, image = EXCLUDED.image, 
-          cover_media = EXCLUDED.cover_media, gallery = EXCLUDED.gallery, variations = EXCLUDED.variations, 
-          is_featured = EXCLUDED.is_featured;
-      `;
-    } catch (e: any) {
-      console.error('Neon SaveProduct Error:', e.message);
-      throw e;
-    }
+    const response = await fetch('/api/products', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(p)
+    });
+    if (!response.ok) throw new Error('Failed to save product');
   },
 
   async deleteProduct(id: string): Promise<void> {
@@ -144,13 +108,14 @@ export const dbService = {
       const filtered = JSON.parse(local).filter((p: any) => p.id !== id);
       localStorage.setItem(PRODUCTS_KEY, JSON.stringify(filtered));
     }
-    if (sql) await sql`DELETE FROM products WHERE id = ${id}`;
+    await fetch(`/api/products/${id}`, { method: 'DELETE' });
   },
 
   async getCSContacts(): Promise<CSContact[]> {
-    if (!sql) return JSON.parse(localStorage.getItem(CS_KEY) || '[]');
     try {
-      const rows = await sql`SELECT * FROM cs_contacts`;
+      const response = await fetch('/api/cs_contacts');
+      if (!response.ok) throw new Error('API Error');
+      const rows = await response.json();
       const formatted = rows.map((r: any) => ({
         id: r.id,
         name: r.name,
@@ -165,24 +130,23 @@ export const dbService = {
   },
 
   async saveCSContact(c: CSContact): Promise<void> {
-    if (!sql) return;
-    const contactId = c.id || `cs_${Date.now()}`;
-    await sql`
-      INSERT INTO cs_contacts (id, name, phone_number, is_active)
-      VALUES (${contactId}, ${c.name}, ${c.phoneNumber}, ${c.isActive})
-      ON CONFLICT (id) DO UPDATE SET
-        name = EXCLUDED.name, phone_number = EXCLUDED.phone_number, is_active = EXCLUDED.is_active;
-    `;
+    const response = await fetch('/api/cs_contacts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(c)
+    });
+    if (!response.ok) throw new Error('Failed to save CS contact');
   },
 
   async deleteCSContact(id: string): Promise<void> {
-    if (sql) await sql`DELETE FROM cs_contacts WHERE id = ${id}`;
+    await fetch(`/api/cs_contacts/${id}`, { method: 'DELETE' });
   },
 
   async getTestimonials(): Promise<Testimonial[]> {
-    if (!sql) return JSON.parse(localStorage.getItem(TESTIMONIALS_KEY) || '[]');
     try {
-      const rows = await sql`SELECT * FROM testimonials`;
+      const response = await fetch('/api/testimonials');
+      if (!response.ok) throw new Error('API Error');
+      const rows = await response.json();
       const formatted = rows.map((r: any) => ({
         id: r.id,
         imageUrl: r.image_url,
@@ -203,18 +167,12 @@ export const dbService = {
     if (idx >= 0) local[idx] = t; else local.push(t);
     localStorage.setItem(TESTIMONIALS_KEY, JSON.stringify(local));
 
-    if (!sql) return;
-    const testimonialId = t.id || `testi_${Date.now()}`;
-    try {
-      await sql`
-        INSERT INTO testimonials (id, image_url, customer_name, description, is_active)
-        VALUES (${testimonialId}, ${t.imageUrl}, ${t.customerName || ''}, ${t.description || ''}, ${t.isActive})
-        ON CONFLICT (id) DO UPDATE SET
-          image_url = EXCLUDED.image_url, customer_name = EXCLUDED.customer_name, description = EXCLUDED.description, is_active = EXCLUDED.is_active;
-      `;
-    } catch (e) {
-      console.error("Neon SaveTestimonial Error:", e);
-    }
+    const response = await fetch('/api/testimonials', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(t)
+    });
+    if (!response.ok) throw new Error('Failed to save testimonial');
   },
 
   async deleteTestimonial(id: string): Promise<void> {
@@ -223,13 +181,14 @@ export const dbService = {
       const filtered = JSON.parse(local).filter((t: any) => t.id !== id);
       localStorage.setItem(TESTIMONIALS_KEY, JSON.stringify(filtered));
     }
-    if (sql) await sql`DELETE FROM testimonials WHERE id = ${id}`;
+    await fetch(`/api/testimonials/${id}`, { method: 'DELETE' });
   },
 
   async getFaqs(): Promise<FAQ[]> {
-    if (!sql) return JSON.parse(localStorage.getItem(FAQS_KEY) || '[]');
     try {
-      const rows = await sql`SELECT * FROM faqs ORDER BY sort_order ASC, created_at DESC`;
+      const response = await fetch('/api/faqs');
+      if (!response.ok) throw new Error('API Error');
+      const rows = await response.json();
       const formatted = rows.map((r: any) => ({
         id: r.id,
         question: r.question,
@@ -251,18 +210,12 @@ export const dbService = {
     if (idx >= 0) local[idx] = f; else local.push(f);
     localStorage.setItem(FAQS_KEY, JSON.stringify(local));
 
-    if (!sql) return;
-    const faqId = f.id || `faq_${Date.now()}`;
-    try {
-      await sql`
-        INSERT INTO faqs (id, question, answer, is_active, sort_order, created_at)
-        VALUES (${faqId}, ${f.question}, ${f.answer}, ${f.isActive}, ${f.sortOrder}, ${f.createdAt})
-        ON CONFLICT (id) DO UPDATE SET
-          question = EXCLUDED.question, answer = EXCLUDED.answer, is_active = EXCLUDED.is_active, sort_order = EXCLUDED.sort_order;
-      `;
-    } catch (e) {
-      console.error("Neon SaveFaq Error:", e);
-    }
+    const response = await fetch('/api/faqs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(f)
+    });
+    if (!response.ok) throw new Error('Failed to save FAQ');
   },
 
   async deleteFaq(id: string): Promise<void> {
@@ -271,13 +224,14 @@ export const dbService = {
       const filtered = JSON.parse(local).filter((f: any) => f.id !== id);
       localStorage.setItem(FAQS_KEY, JSON.stringify(filtered));
     }
-    if (sql) await sql`DELETE FROM faqs WHERE id = ${id}`;
+    await fetch(`/api/faqs/${id}`, { method: 'DELETE' });
   },
 
   async getBenefitItems(): Promise<BenefitItem[]> {
-    if (!sql) return JSON.parse(localStorage.getItem(BENEFITS_KEY) || '[]');
     try {
-      const rows = await sql`SELECT * FROM benefit_items ORDER BY sort_order ASC`;
+      const response = await fetch('/api/benefit_items');
+      if (!response.ok) throw new Error('API Error');
+      const rows = await response.json();
       const formatted = rows.map((r: any) => ({
         id: r.id,
         icon: r.icon,
@@ -299,25 +253,19 @@ export const dbService = {
     if (idx >= 0) local[idx] = b; else local.push(b);
     localStorage.setItem(BENEFITS_KEY, JSON.stringify(local));
 
-    if (!sql) return;
-    try {
-      await sql`
-        INSERT INTO benefit_items (id, icon, title, subtitle, is_active, sort_order)
-        VALUES (${b.id}, ${b.icon}, ${b.title}, ${b.subtitle}, ${b.isActive}, ${b.sortOrder})
-        ON CONFLICT (id) DO UPDATE SET
-          title = EXCLUDED.title, subtitle = EXCLUDED.subtitle, is_active = EXCLUDED.is_active;
-      `;
-    } catch (e) {
-      console.error("Neon SaveBenefit Error:", e);
-    }
+    const response = await fetch('/api/benefit_items', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(b)
+    });
+    if (!response.ok) throw new Error('Failed to save benefit item');
   },
 
   async getSiteSettings(): Promise<SiteSettings> {
-    if (!sql) return JSON.parse(localStorage.getItem(SITE_SETTINGS_KEY) || JSON.stringify(DEFAULT_SETTINGS));
     try {
-      const rows = await sql`SELECT data FROM site_settings WHERE id = 'main_settings'`;
-      if (rows.length > 0) {
-        const settings = typeof rows[0].data === 'string' ? JSON.parse(rows[0].data) : rows[0].data;
+      const response = await fetch('/api/site_settings');
+      if (response.ok) {
+        const settings = await response.json();
         localStorage.setItem(SITE_SETTINGS_KEY, JSON.stringify(settings));
         return settings;
       }
@@ -327,30 +275,29 @@ export const dbService = {
 
   async saveSiteSettings(settings: SiteSettings): Promise<void> {
     localStorage.setItem(SITE_SETTINGS_KEY, JSON.stringify(settings));
-    if (!sql) return;
-    await sql`
-      INSERT INTO site_settings (id, data)
-      VALUES ('main_settings', ${JSON.stringify(settings)})
-      ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data;
-    `;
+    const response = await fetch('/api/site_settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings)
+    });
+    if (!response.ok) throw new Error('Failed to save site settings');
   },
 
   async getAdminCredentials(): Promise<AdminCredentials> {
-    if (!sql) return JSON.parse(localStorage.getItem(ADMIN_KEY) || JSON.stringify({ username: 'admin', password: 'admin123' }));
     try {
-      const rows = await sql`SELECT username, password FROM admin_auth WHERE id = 'admin_config'`;
-      if (rows.length > 0) return { username: rows[0].username, password: rows[0].password };
+      const response = await fetch('/api/admin_auth');
+      if (response.ok) return await response.json();
     } catch (e) {}
     return JSON.parse(localStorage.getItem(ADMIN_KEY) || JSON.stringify({ username: 'admin', password: 'admin123' }));
   },
 
   async saveAdminCredentials(creds: AdminCredentials): Promise<void> {
     localStorage.setItem(ADMIN_KEY, JSON.stringify(creds));
-    if (!sql) return;
-    await sql`
-      INSERT INTO admin_auth (id, username, password)
-      VALUES ('admin_config', ${creds.username}, ${creds.password})
-      ON CONFLICT (id) DO UPDATE SET username = EXCLUDED.username, password = EXCLUDED.password;
-    `;
+    const response = await fetch('/api/admin_auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(creds)
+    });
+    if (!response.ok) throw new Error('Failed to save admin credentials');
   }
 };
