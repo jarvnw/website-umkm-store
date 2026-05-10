@@ -29,15 +29,22 @@ async function startServer() {
 
   // Database Connection (Securely on the server)
   const getNeonUrl = () => {
-    // Priority 1: Direct DATABASE_URL
+    // Priority 1: Direct DATABASE_URL (Any variation)
     const directUrl = process.env.DATABASE_URL || 
                       process.env.VITE_DATABASE_URL || 
-                      process.env.NEON_DATABASE_URL;
+                      process.env.NEON_DATABASE_URL ||
+                      process.env.POSTGRES_URL; // Vercel legacy
     if (directUrl) return directUrl;
 
     // Priority 2: Reconstruct from components if available
-    const rawUrl = process.env.NEON_API_URL || process.env.VITE_NEON_API_URL || process.env.NEON_URL || '';
-    const password = process.env.NEON_API_KEY || process.env.VITE_NEON_API_KEY || process.env.NEON_KEY || '';
+    const rawUrl = process.env.NEON_API_URL || 
+                   process.env.VITE_NEON_API_URL || 
+                   process.env.NEON_URL || 
+                   process.env.DATABASE_RAW_URL || '';
+    const password = process.env.NEON_API_KEY || 
+                     process.env.VITE_NEON_API_KEY || 
+                     process.env.NEON_KEY || 
+                     process.env.DATABASE_PASSWORD || '';
     
     if (rawUrl && password) {
       const host = rawUrl
@@ -53,8 +60,93 @@ async function startServer() {
   };
 
   const neonUrl = getNeonUrl();
-  const sql = neonUrl ? neon(neonUrl) : null;
-  log(`SQL Connection setup: ${neonUrl ? 'Attempted' : 'Skipped (No URL)'}`);
+  let sql: any = null;
+  try {
+    if (neonUrl) {
+      sql = neon(neonUrl);
+      log('SQL Connection initialized successfully');
+      
+      // Auto-Migration logic
+      (async () => {
+        try {
+          log('Running Auto-Migrations...');
+          await sql`
+            CREATE TABLE IF NOT EXISTS products (
+              id TEXT PRIMARY KEY,
+              name TEXT NOT NULL,
+              description TEXT,
+              price DECIMAL(12,2) NOT NULL,
+              original_price DECIMAL(12,2),
+              category TEXT,
+              image TEXT,
+              cover_media JSONB,
+              gallery JSONB,
+              variations JSONB,
+              is_featured BOOLEAN DEFAULT FALSE,
+              created_at BIGINT
+            )
+          `;
+          await sql`
+            CREATE TABLE IF NOT EXISTS cs_contacts (
+              id TEXT PRIMARY KEY,
+              name TEXT NOT NULL,
+              phone_number TEXT NOT NULL,
+              is_active BOOLEAN DEFAULT TRUE
+            )
+          `;
+          await sql`
+            CREATE TABLE IF NOT EXISTS testimonials (
+              id TEXT PRIMARY KEY,
+              image_url TEXT NOT NULL,
+              customer_name TEXT,
+              description TEXT,
+              is_active BOOLEAN DEFAULT TRUE
+            )
+          `;
+          await sql`
+            CREATE TABLE IF NOT EXISTS faqs (
+              id TEXT PRIMARY KEY,
+              question TEXT NOT NULL,
+              answer TEXT,
+              is_active BOOLEAN DEFAULT TRUE,
+              sort_order INTEGER DEFAULT 0,
+              created_at BIGINT
+            )
+          `;
+          await sql`
+            CREATE TABLE IF NOT EXISTS benefit_items (
+              id TEXT PRIMARY KEY,
+              icon TEXT,
+              title TEXT NOT NULL,
+              subtitle TEXT,
+              is_active BOOLEAN DEFAULT TRUE,
+              sort_order INTEGER DEFAULT 0
+            )
+          `;
+          await sql`
+            CREATE TABLE IF NOT EXISTS site_settings (
+              id TEXT PRIMARY KEY,
+              data JSONB NOT NULL
+            )
+          `;
+          await sql`
+            CREATE TABLE IF NOT EXISTS admin_auth (
+              id TEXT PRIMARY KEY,
+              username TEXT NOT NULL,
+              password TEXT NOT NULL
+            )
+          `;
+          log('Auto-Migrations completed successfully');
+        } catch (migrationErr: any) {
+          log(`Auto-Migration Error: ${migrationErr.message}`);
+        }
+      })();
+    } else {
+      log('SQL Connection skipped: NO DATABASE_URL found');
+    }
+  } catch (err: any) {
+    log(`SQL Init Failure: ${err.message}`);
+  }
 
   // Logging middleware
   app.use((req, res, next) => {
@@ -69,7 +161,14 @@ async function startServer() {
       status: 'ok', 
       sqlConnected: !!sql,
       databaseConfigured: !!neonUrl,
-      env: process.env.NODE_ENV
+      imageKitConfigured: !!(process.env.IMAGEKIT_PRIVATE_KEY || process.env.VITE_IMAGEKIT_PRIVATE_KEY || process.env.IMAGEKIT_SECRET_KEY),
+      env: process.env.NODE_ENV,
+      varsSeen: {
+        DATABASE_URL: !!process.env.DATABASE_URL,
+        NEON_API_URL: !!process.env.NEON_API_URL,
+        IK_PRIVATE: !!(process.env.IMAGEKIT_PRIVATE_KEY || process.env.IMAGEKIT_SECRET_KEY),
+        IK_PUBLIC: !!(process.env.VITE_IMAGEKIT_PUBLIC_KEY || process.env.IMAGEKIT_PUBLIC_KEY)
+      }
     });
   });
 

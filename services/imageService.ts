@@ -42,10 +42,23 @@ export const imageService = {
     return new Promise(async (resolve, reject) => {
       try {
         const auth = await this.getAuthParams();
-        const publicKey = getEnv('VITE_IMAGEKIT_PUBLIC_KEY');
+        
+        // Try local env first, then fallback to API config
+        let publicKey = getEnv('VITE_IMAGEKIT_PUBLIC_KEY');
+        if (!publicKey) {
+          try {
+            const configResp = await fetch('/api/config');
+            if (configResp.ok) {
+              const config = await configResp.json();
+              publicKey = config.imageKitPublicKey;
+            }
+          } catch (e) {
+            console.error('Failed to fetch public config from server:', e);
+          }
+        }
 
         if (!publicKey) {
-          return reject(new Error('VITE_IMAGEKIT_PUBLIC_KEY belum dikonfigurasi di environment.'));
+          return reject(new Error('Kunci Publik ImageKit belum dikonfigurasi. Hubungi Admin.'));
         }
 
         const formData = new FormData();
