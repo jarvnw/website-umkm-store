@@ -30,12 +30,14 @@ async function startServer() {
   // Database Connection (Securely on the server)
   const getNeonUrl = () => {
     // Priority 1: Direct DATABASE_URL
-    const directUrl = process.env.DATABASE_URL || process.env.VITE_DATABASE_URL;
+    const directUrl = process.env.DATABASE_URL || 
+                      process.env.VITE_DATABASE_URL || 
+                      process.env.NEON_DATABASE_URL;
     if (directUrl) return directUrl;
 
     // Priority 2: Reconstruct from components if available
-    const rawUrl = process.env.NEON_API_URL || process.env.VITE_NEON_API_URL || '';
-    const password = process.env.NEON_API_KEY || process.env.VITE_NEON_API_KEY || '';
+    const rawUrl = process.env.NEON_API_URL || process.env.VITE_NEON_API_URL || process.env.NEON_URL || '';
+    const password = process.env.NEON_API_KEY || process.env.VITE_NEON_API_KEY || process.env.NEON_KEY || '';
     
     if (rawUrl && password) {
       const host = rawUrl
@@ -66,13 +68,16 @@ async function startServer() {
     res.json({ 
       status: 'ok', 
       sqlConnected: !!sql,
+      databaseConfigured: !!neonUrl,
       env: process.env.NODE_ENV
     });
   });
 
   // ImageKit Auth Proxy
   app.get('/api/auth', (req, res) => {
-    const privateKey = process.env.IMAGEKIT_PRIVATE_KEY || process.env.VITE_IMAGEKIT_PRIVATE_KEY;
+    const privateKey = process.env.IMAGEKIT_PRIVATE_KEY || 
+                       process.env.VITE_IMAGEKIT_PRIVATE_KEY || 
+                       process.env.IMAGEKIT_SECRET_KEY;
     if (!privateKey) {
       return res.status(500).json({ error: "ImageKit Private Key is not configured." });
     }
@@ -80,6 +85,14 @@ async function startServer() {
     const expire = Number(req.query.expire) || Math.floor(Date.now() / 1000) + 1800;
     const signature = crypto.createHmac('sha1', privateKey).update(token + expire).digest('hex');
     res.json({ token, expire, signature });
+  });
+
+  // Public Env Proxy (To safe-expose public keys to frontend if missing in DB)
+  app.get('/api/config', (req, res) => {
+    res.json({
+      imageKitPublicKey: process.env.VITE_IMAGEKIT_PUBLIC_KEY || process.env.IMAGEKIT_PUBLIC_KEY,
+      imageKitUrlEndpoint: process.env.VITE_IMAGEKIT_URL_ENDPOINT || process.env.VITE_IMAGEKIT_URL || process.env.IMAGEKIT_URL_ENDPOINT
+    });
   });
 
   // DB Proxies
