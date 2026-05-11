@@ -69,9 +69,11 @@ Aplikasi ini siap di-deploy ke Vercel:
 2. Tambahkan semua Environment Variables di atas pada panel pengaturan Vercel.
 3. Vercel akan secara otomatis mendeteksi konfigurasi `vercel.json` dan melakukan build.
 
-## 📄 Lisensi
+## 📄 First Page Template
 
-Proyek ini dilisensikan di bawah [MIT License](LICENSE). Anda bebas menggunakannya untuk kebutuhan UMKM Anda atau mengembangkannya lebih lanjut.
+Proyek ini dibangun oleh First Page Template.
+IG: firstpage.template
+YT: First Page Template
 
 ---
 Dikembangkan dengan ❤️ untuk kemajuan UMKM Indonesia.
