@@ -24,35 +24,25 @@ const getNeonUrl = () => {
   
   if (directUrl) {
     let cleaned = directUrl.trim();
-    // Auto-Clean: Remove 'psql ' if present
-    if (cleaned.startsWith('psql ')) {
-      cleaned = cleaned.substring(5).trim();
-    }
-    // Remove surrounding quotes (single or double)
+    if (cleaned.startsWith('psql ')) cleaned = cleaned.substring(5).trim();
     if ((cleaned.startsWith("'") && cleaned.endsWith("'")) || (cleaned.startsWith('"') && cleaned.endsWith('"'))) {
       cleaned = cleaned.substring(1, cleaned.length - 1);
     }
-    // Ensure it starts with postgresql:// or postgres://
     if (!cleaned.startsWith('postgres://') && !cleaned.startsWith('postgresql://')) {
-      if (cleaned.includes('@')) {
-        cleaned = 'postgresql://' + cleaned;
-      }
+      if (cleaned.includes('@')) cleaned = 'postgresql://' + cleaned;
     }
-    // Remove terminal & character if it's from a cut-off paste
-    if (cleaned.endsWith('&')) {
-      cleaned = cleaned.substring(0, cleaned.length - 1);
-    }
+    if (cleaned.endsWith('&')) cleaned = cleaned.substring(0, cleaned.length - 1);
     return cleaned;
   }
 
-  const rawUrl = process.env.NEON_API_URL || process.env.VITE_NEON_API_URL || process.env.DATABASE_RAW_URL || '';
-  const password = process.env.NEON_API_KEY || process.env.VITE_NEON_API_KEY || process.env.DATABASE_PASSWORD || '';
+  const rawUrl = process.env.NEON_API_URL || process.env.VITE_NEON_API_URL || '';
+  const password = process.env.NEON_API_KEY || process.env.VITE_NEON_API_KEY || '';
   
   if (rawUrl && password) {
-    const host = rawUrl
-      .replace('https://', '').replace('postgres://', '').replace('postgresql://', '')
-      .split('@').pop()!.replace('-pooler', '').split('/')[0];
-    return `postgres://neondb_owner:${password}@${host}/neondb?sslmode=require`;
+    try {
+      const host = rawUrl.replace('https://', '').replace('postgres://', '').replace('postgresql://', '').split('@').pop()!.replace('-pooler', '').split('/')[0];
+      return `postgres://neondb_owner:${password}@${host}/neondb?sslmode=require`;
+    } catch (e) { log('URL reconstruction failed'); }
   }
   return null;
 };
@@ -63,17 +53,17 @@ let sql: any = null;
 try {
   if (neonUrl) {
     sql = neon(neonUrl);
-    log('SQL Connection Prepared');
+    log('Neon SQL instance created');
   } else {
-    log('SQL Connection skipped: NO DATABASE_URL found');
+    log('No DB URL provided');
   }
 } catch (e: any) {
-  log('SQL Init error: ' + e.message);
+  log('SQL Initialization failure: ' + e.message);
 }
 
+// Background Migrations (using timeout to avoid blocking startup)
 if (sql) {
-  // Run migrations in background
-  (async () => {
+  setTimeout(async () => {
     try {
       await sql`CREATE TABLE IF NOT EXISTS products (id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT, price DECIMAL(12,2) NOT NULL, original_price DECIMAL(12,2), category TEXT, image TEXT, cover_media JSONB, gallery JSONB, variations JSONB, is_featured BOOLEAN DEFAULT FALSE, created_at BIGINT)`;
       await sql`CREATE TABLE IF NOT EXISTS cs_contacts (id TEXT PRIMARY KEY, name TEXT NOT NULL, phone_number TEXT NOT NULL, is_active BOOLEAN DEFAULT TRUE)`;
@@ -82,11 +72,9 @@ if (sql) {
       await sql`CREATE TABLE IF NOT EXISTS benefit_items (id TEXT PRIMARY KEY, icon TEXT, title TEXT NOT NULL, subtitle TEXT, is_active BOOLEAN DEFAULT TRUE, sort_order INTEGER DEFAULT 0)`;
       await sql`CREATE TABLE IF NOT EXISTS site_settings (id TEXT PRIMARY KEY, data JSONB NOT NULL)`;
       await sql`CREATE TABLE IF NOT EXISTS admin_auth (id TEXT PRIMARY KEY, username TEXT NOT NULL, password TEXT NOT NULL)`;
-      log('Migrations finished');
-    } catch (e: any) { 
-      log('Migration failure: ' + e.message); 
-    }
-  })();
+      log('Migrations finished in background');
+    } catch (e: any) { log('Migration background error: ' + e.message); }
+  }, 1000);
 }
 
 // Middleware
@@ -119,21 +107,31 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api/debug-db', async (req, res) => {
   const info: any = {
-    env_present: !!neonUrl,
+    now: new Date().toISOString(),
+    env: {
+      has_neon_url: !!neonUrl,
+      neon_url_start: neonUrl ? neonUrl.substring(0, 15) + '...' : 'none',
+      node_env: process.env.NODE_ENV,
+      ik_key: !!(process.env.IMAGEKIT_PRIVATE_KEY || process.env.IMAGEKIT_SECRET_KEY)
+    },
     sql_initialized: !!sql,
-    neon_url_preview: neonUrl ? (neonUrl.substring(0, 20) + '***' + neonUrl.substring(neonUrl.length - 5)) : 'none',
-    test_query: 'attempting...'
+    test: 'probing...'
   };
 
-  if (sql) {
-    try {
-      const result = await sql`SELECT 1 as test`;
-      info.test_query = 'success';
-      info.result = result;
-    } catch (e: any) {
-      info.test_query = 'failed';
-      info.error = e.message;
-    }
+  if (!sql) {
+    info.test = 'failed (no sql instance)';
+    return res.json(info);
+  }
+
+  try {
+    const result = await sql`SELECT NOW() as db_time`;
+    info.test = 'success';
+    info.db_result = result;
+  } catch (e: any) {
+    info.test = 'failed (query error)';
+    info.error_message = e.message;
+    info.error_stack = e.stack;
+    console.error('Debug Query Error:', e);
   }
   res.json(info);
 });
@@ -290,5 +288,15 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 app.listen(3000, '0.0.0.0', () => log('Server running on 3000'));
+
+// Global Error Handler
+app.use((err: any, req: any, res: any, next: any) => {
+  log(`Global Error: ${err.message}`);
+  res.status(500).json({ 
+    error: "Internal Server Error", 
+    message: err.message,
+    stack: err.stack // Enabled for debugging Vercel crash
+  });
+});
 
 export default app;
