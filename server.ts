@@ -23,14 +23,23 @@ const getNeonUrl = () => {
                   process.env.POSTGRES_URL; 
   
   if (directUrl) {
-    // Auto-Clean: Remove 'psql' wrapper if user pasted the command by mistake
-    directUrl = directUrl.trim();
-    if (directUrl.startsWith('psql ')) {
-      const match = directUrl.match(/'([^']+)'/);
-      if (match) directUrl = match[1];
-      else directUrl = directUrl.replace('psql ', '');
+    let cleaned = directUrl.trim();
+    // Remove 'psql ' if present
+    if (cleaned.startsWith('psql ')) {
+      cleaned = cleaned.substring(5).trim();
     }
-    return directUrl;
+    // Remove surrounding quotes
+    if ((cleaned.startsWith("'") && cleaned.endsWith("'")) || (cleaned.startsWith('"') && cleaned.endsWith('"'))) {
+      cleaned = cleaned.substring(1, cleaned.length - 1);
+    }
+    // Final check for 'postgresql://' or 'postgres://'
+    if (!cleaned.startsWith('postgres://') && !cleaned.startsWith('postgresql://')) {
+      // If it looks like a hostname only (no protocol), fix it
+      if (cleaned.includes('@') && cleaned.includes('/')) {
+        cleaned = 'postgresql://' + cleaned;
+      }
+    }
+    return cleaned;
   }
 
   const rawUrl = process.env.NEON_API_URL || process.env.VITE_NEON_API_URL || process.env.DATABASE_RAW_URL || '';
@@ -101,19 +110,26 @@ app.get('/api/health', (req, res) => {
     status: 'ok', 
     sql: !!sql, 
     env: process.env.NODE_ENV,
-    ik: !!(process.env.IMAGEKIT_PRIVATE_KEY || process.env.IMAGEKIT_SECRET_KEY || process.env.VITE_IMAGEKIT_PRIVATE_KEY)
+    ik: !!(process.env.IMAGEKIT_PRIVATE_KEY || process.env.IMAGEKIT_SECRET_KEY || process.env.VITE_IMAGEKIT_PRIVATE_KEY),
+    db_config: neonUrl ? (neonUrl.substring(0, 15) + '...') : 'missing'
   });
 });
 
 app.get('/api/auth', (req, res) => {
   try {
     const privateKey = process.env.IMAGEKIT_PRIVATE_KEY || process.env.IMAGEKIT_SECRET_KEY || process.env.VITE_IMAGEKIT_PRIVATE_KEY;
-    if (!privateKey) throw new Error("ImageKit Private Key missing");
+    if (!privateKey) {
+      log('Error: IMAGEKIT_PRIVATE_KEY missing in environment variables');
+      return res.status(500).json({ error: "ImageKit Private Key is not configured on server." });
+    }
     const token = (req.query.token as string) || crypto.randomBytes(16).toString('hex');
     const expire = Number(req.query.expire) || Math.floor(Date.now() / 1000) + 1800;
     const signature = crypto.createHmac('sha1', privateKey).update(token + expire.toString()).digest('hex');
     res.json({ token, expire, signature });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch (e: any) { 
+    log(`Auth Proxy Error: ${e.message}`);
+    res.status(500).json({ error: e.message }); 
+  }
 });
 
 app.get('/api/config', (req, res) => {
