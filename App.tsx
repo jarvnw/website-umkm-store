@@ -604,16 +604,18 @@ const ProductDetailPage: React.FC = () => {
             )}
             <p className="text-4xl font-black text-primary">Rp {currentPrice.toLocaleString('id-ID')}</p>
           </div>
-          <div className="mb-10">
-            <h4 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-4">Pilih Variasi</h4>
-            <div className="flex flex-wrap gap-3">
-              {product.variations.map(v => (
-                <button key={v.id} onClick={() => setSelectedVariation(v)} className={`px-6 py-3 rounded-2xl border-2 font-bold transition-all ${selectedVariation?.id === v.id ? 'border-primary bg-primary/5 text-primary' : 'border-gray-100 dark:border-gray-800 hover:border-gray-300'}`}>
-                  {v.name}
-                </button>
-              ))}
+          {product.variations && product.variations.length > 0 && (
+            <div className="mb-10">
+              <h4 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-4">Pilih Variasi</h4>
+              <div className="flex flex-wrap gap-3">
+                {product.variations.map(v => (
+                  <button key={v.id} onClick={() => setSelectedVariation(v)} className={`px-6 py-3 rounded-2xl border-2 font-bold transition-all ${selectedVariation?.id === v.id ? 'border-primary bg-primary/5 text-primary' : 'border-gray-100 dark:border-gray-800 hover:border-gray-300'}`}>
+                    {v.name}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
           <button onClick={() => addToCart(product, selectedVariation || undefined)} className="w-full h-16 bg-primary text-black rounded-2xl font-black text-lg flex items-center justify-center gap-3 hover:scale-[1.02] transition-transform shadow-xl shadow-primary/20">
             <span className="material-symbols-outlined font-black">add_shopping_cart</span> Tambah ke Keranjang
           </button>

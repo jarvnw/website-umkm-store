@@ -59,8 +59,8 @@ const AdminDashboard: React.FC = () => {
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProduct) return;
-    if (!editingProduct.variations || editingProduct.variations.length === 0) {
-      alert('Minimal harus memiliki 1 variasi harga!');
+    if (!editingProduct.name) {
+      alert('Nama produk wajib diisi!');
       return;
     }
     setIsSaving(true);
@@ -69,7 +69,8 @@ const AdminDashboard: React.FC = () => {
         id: editingProduct.id || Date.now().toString(),
         name: editingProduct.name || '',
         description: editingProduct.description || '',
-        price: editingProduct.variations?.[0]?.price || 0,
+        // Use manual price if provided, otherwise fallback to first variation
+        price: editingProduct.price || editingProduct.variations?.[0]?.price || 0,
         originalPrice: editingProduct.originalPrice || undefined,
         category: editingProduct.category || 'Umum',
         image: editingProduct.coverMedia?.url || editingProduct.image || '',
@@ -549,9 +550,14 @@ const AdminDashboard: React.FC = () => {
                     <input required className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" placeholder="Kategori" value={editingProduct?.category || ''} onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })} />
                     <textarea required className="h-32 md:col-span-2 border-2 rounded-2xl p-6 bg-gray-50 dark:bg-black/20 outline-none font-black resize-none" placeholder="Deskripsi" value={editingProduct?.description || ''} onChange={e => setEditingProduct({ ...editingProduct, description: e.target.value })} />
                     <div className="flex flex-col gap-2">
-                       <label className="text-[10px] font-black uppercase text-gray-400 ml-2">Harga Utama/Coret (Global)</label>
+                       <label className="text-[10px] font-black uppercase text-gray-400 ml-2">Harga Jual Utama</label>
+                       <input type="number" className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" placeholder="Contoh: 125000" value={editingProduct?.price || ''} onChange={e => setEditingProduct({ ...editingProduct, price: Number(e.target.value) || 0 })} />
+                       <p className="text-[9px] text-gray-400 ml-2 font-medium italic">*Opsional jika menggunakan variasi.</p>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                       <label className="text-[10px] font-black uppercase text-gray-400 ml-2">Harga Coret Utama (Global)</label>
                        <input type="number" className="h-14 border-2 rounded-2xl px-6 bg-gray-50 dark:bg-black/20 outline-none font-black" placeholder="Contoh: 150000" value={editingProduct?.originalPrice || ''} onChange={e => setEditingProduct({ ...editingProduct, originalPrice: Number(e.target.value) || undefined })} />
-                       <p className="text-[9px] text-gray-400 ml-2">*Akan dicoret jika angka ini lebih besar dari harga varian pertama.</p>
+                       <p className="text-[9px] text-gray-400 ml-2">*Akan dicoret jika angka ini lebih besar dari harga jual.</p>
                     </div>
 
                     {/* FEATURED TOGGLE */}
